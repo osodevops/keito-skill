@@ -1,0 +1,13 @@
+version: 1
+workspace_id: co_example
+project_id: prj_example
+task_id: tsk_development
+agent_tracking:
+  enabled: true
+  source: agent
+  draft: true
+  min_duration_seconds: 60
+  max_duration_seconds: 28800
+  redact_notes: false
+metadata:
+  cost_centre: engineering
