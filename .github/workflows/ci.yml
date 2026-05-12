@@ -1,0 +1,62 @@
+name: CI
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [main, codex/keito-time-track-skill-review]
+  pull_request:
+    branches: [main, codex/keito-time-track-skill-review]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Shell Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Install shell tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq shellcheck
+
+      - name: Syntax check
+        run: |
+          bash -n hooks/session-end.sh scripts/setup-wizard.sh scripts/status.sh \
+            scripts/disable.sh scripts/install-cli.sh installers/install-codex.sh \
+            installers/install-claude-code.sh tests/run.sh
+
+      - name: ShellCheck
+        run: shellcheck hooks/session-start.sh hooks/session-end.sh hooks/lib/*.sh scripts/*.sh installers/*.sh tests/run.sh
+
+      - name: Run skill tests
+        run: tests/run.sh
+
+  security:
+    name: Security Guardrails
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Reject floating skills installer versions
+        run: |
+          floating_latest='skills@''latest'
+          floating_npx='npx[[:space:]]+skills[[:space:]]+add'
+          if git grep -nE "${floating_latest}|${floating_npx}" -- .; then
+            echo "::error::Use an exact skills npm package version, for example skills@1.5.6"
+            exit 1
+          fi
+
+      - name: Reject unpinned workflow actions
+        run: |
+          if git grep -nE 'uses:[[:space:]]+[^#]+@(v[0-9]+|main|master|latest)' -- .github/workflows; then
+            echo "::error::GitHub Actions must be pinned to full commit SHAs"
+            exit 1
+          fi
