@@ -22,7 +22,18 @@ From a client repository:
 ```
 
 The skill runs `scripts/setup-wizard.sh`, which uses the Keito CLI to pick an
-existing project and task, then writes `.keito/config.yml`.
+existing project and task, then asks for confirmation before writing the
+repo-local `.keito/config.yml`.
+
+Each repository needs its own `.keito/config.yml`. The hooks search upward only
+within the current Git worktree, so one client or project config is not reused
+from a neighbouring repository.
+
+To disable tracking for a repository:
+
+```bash
+scripts/disable.sh
+```
 
 ## Runtime
 

@@ -35,6 +35,12 @@ scripts/pause-resume.sh pause
 scripts/pause-resume.sh resume
 ```
 
+When the user asks to disable tracking for this repository, run:
+
+```bash
+scripts/disable.sh
+```
+
 When the user asks what was logged today, run:
 
 ```bash
@@ -47,6 +53,8 @@ Summarise the returned entries by duration, project, task, and notes.
 
 - Never read or expose Keito API keys. Authentication belongs to the Keito CLI.
 - Never write `.keito/config.yml` by hand. Use `scripts/setup-wizard.sh`.
+- Treat `.keito/config.yml` as repository-specific. Do not reuse a config from
+  another client or project.
 - Never create a time entry from the skill body. The session-end hook owns
   duration measurement and writes exactly one entry per session.
 - If the Keito CLI is missing or unauthenticated, tell the user to run

@@ -9,23 +9,38 @@ fi
 source_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)
 dest="$HOME/.claude/skills/keito-time-track"
 settings="$HOME/.claude/settings.json"
+keito_bin=${KEITO_CLI_BIN:-}
+[ -n "$keito_bin" ] || keito_bin=$(command -v keito 2>/dev/null || true)
+
+shell_quote() {
+  printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"
+}
 
 mkdir -p "$(dirname "$dest")" "$(dirname "$settings")"
 rm -rf "$dest"
 cp -R "$source_dir" "$dest"
 
 [ -f "$settings" ] || printf '{}\n' > "$settings"
-start_cmd="KEITO_AGENT_TYPE=claude-code $dest/hooks/session-start.sh"
-end_cmd="KEITO_AGENT_TYPE=claude-code $dest/hooks/session-end.sh"
+keito_env=""
+if [ -n "$keito_bin" ]; then
+  keito_env="KEITO_CLI_BIN=$(shell_quote "$keito_bin") "
+fi
+start_cmd="${keito_env}KEITO_AGENT_TYPE=claude-code $(shell_quote "$dest/hooks/session-start.sh")"
+end_cmd="${keito_env}KEITO_AGENT_TYPE=claude-code $(shell_quote "$dest/hooks/session-end.sh")"
 
 jq \
   --arg start "$start_cmd" \
   --arg end "$end_cmd" \
+  --arg start_script "$dest/hooks/session-start.sh" \
+  --arg end_script "$dest/hooks/session-end.sh" \
   '
   .hooks = (.hooks // {}) |
   .hooks.SessionStart = (
     (.hooks.SessionStart // [])
-    | map(select((.hooks // [] | map(.command // "") | index($start)) == null))
+    | map(select(
+        (.hooks // [] | map(.command // "") | any(. == $start or contains($start_script)))
+        | not
+      ))
     + [{
       matcher: "*",
       hooks: [{ type: "command", command: $start }]
@@ -33,7 +48,10 @@ jq \
   ) |
   .hooks.Stop = (
     (.hooks.Stop // [])
-    | map(select((.hooks // [] | map(.command // "") | index($end)) == null))
+    | map(select(
+        (.hooks // [] | map(.command // "") | any(. == $end or contains($end_script)))
+        | not
+      ))
     + [{
       hooks: [{ type: "command", command: $end, timeout: 30 }]
     }]

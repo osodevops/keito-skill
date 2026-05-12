@@ -2,6 +2,8 @@
 set -euo pipefail
 
 repo_root=$(pwd -P)
+config_path="$repo_root/.keito/config.yml"
+keito_cmd=${KEITO_CLI_BIN:-keito}
 
 json_field() {
   local json=$1
@@ -22,12 +24,17 @@ if ! command -v jq >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! command -v keito >/dev/null 2>&1; then
+if [ -n "${KEITO_CLI_BIN:-}" ]; then
+  if [ ! -x "$keito_cmd" ]; then
+    echo "Keito CLI path is not executable: $keito_cmd" >&2
+    exit 1
+  fi
+elif ! command -v "$keito_cmd" >/dev/null 2>&1; then
   echo "Keito CLI is required. Install it, then run: keito auth login" >&2
   exit 1
 fi
 
-auth_json=$(keito --json auth status 2>/dev/null || printf '{"authenticated":false}')
+auth_json=$("$keito_cmd" --json auth status 2>/dev/null || printf '{"authenticated":false}')
 authenticated=$(printf '%s' "$auth_json" | jq -r '.authenticated // false')
 api_key_valid=$(printf '%s' "$auth_json" | jq -r '.api_key_valid // true')
 if [ "$authenticated" != "true" ] || [ "$api_key_valid" != "true" ]; then
@@ -40,7 +47,7 @@ workspace_id=$(printf '%s' "$auth_json" | jq -r '.account_id // .workspace_id //
 echo "Keito time tracking setup for $(basename "$repo_root")"
 echo
 
-clients_json=$(keito --json clients list)
+clients_json=$("$keito_cmd" --json clients list)
 client_count=$(printf '%s' "$clients_json" | jq 'length')
 
 echo "Select a client:"
@@ -62,7 +69,7 @@ if [ "$client_choice" -eq $((client_count + 1)) ]; then
     echo "Client name is required." >&2
     exit 1
   fi
-  client_json=$(keito --json clients create "$client_name")
+  client_json=$("$keito_cmd" --json clients create "$client_name")
   client_id=$(json_field "$client_json" '.id' 'created client id')
   client_name=$(json_field "$client_json" '.name' 'created client name')
 else
@@ -72,7 +79,7 @@ else
 fi
 
 echo
-projects_json=$(keito --json projects list --client "$client_id")
+projects_json=$("$keito_cmd" --json projects list --client "$client_id")
 project_count=$(printf '%s' "$projects_json" | jq 'length')
 
 echo "Select a project for $client_name:"
@@ -94,7 +101,7 @@ if [ "$project_choice" -eq $((project_count + 1)) ]; then
   printf 'Project name [%s]: ' "$(basename "$repo_root")"
   read -r project_name
   [ -n "$project_name" ] || project_name=$(basename "$repo_root")
-  project_json=$(keito --json projects create "$project_name" --client "$client_id")
+  project_json=$("$keito_cmd" --json projects create "$project_name" --client "$client_id")
   project_id=$(json_field "$project_json" '.id' 'created project id')
   project_name=$(json_field "$project_json" '.name' 'created project name')
 else
@@ -103,7 +110,7 @@ else
   project_name=$(json_field "$projects_json" ".[$project_index].name" 'selected project name')
 fi
 
-tasks_json=$(keito --json projects tasks)
+tasks_json=$("$keito_cmd" --json projects tasks)
 task_count=$(printf '%s' "$tasks_json" | jq 'length')
 if [ "$task_count" -eq 0 ]; then
   echo "No Keito tasks were returned. Add a default task in Keito, then rerun this wizard." >&2
@@ -142,8 +149,33 @@ case "$enabled_answer" in
   *) enabled=false ;;
 esac
 
+echo
+if [ -f "$config_path" ]; then
+  echo "Existing Keito repo config will be replaced:"
+  echo "  $config_path"
+  echo
+fi
+echo "Review this repo-specific Keito config:"
+echo "  Path: $config_path"
+echo "  Workspace: ${workspace_id:-default}"
+echo "  Client: $client_name ($client_id)"
+echo "  Project: $project_name ($project_id)"
+echo "  Task: $task_name ($task_id)"
+echo "  Source: agent"
+echo "  Draft metadata: true"
+echo "  Min duration: 60s"
+echo "  Max duration: 28800s"
+printf 'Write this config for this repo only? [y/N] '
+read -r confirm_answer
+case "$confirm_answer" in
+  y|Y|yes|YES) ;;
+  *)
+    echo "Setup cancelled; no changes written."
+    exit 0
+    ;;
+esac
+
 mkdir -p "$repo_root/.keito"
-config_path="$repo_root/.keito/config.yml"
 config_tmp=$(mktemp "$repo_root/.keito/config.yml.tmp.XXXXXX")
 cleanup_config_tmp() {
   rm -f "$config_tmp"

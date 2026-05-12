@@ -135,7 +135,8 @@ metadata=$(jq -c -n \
     draft: $draft
   }')
 
-cmd=(keito --json)
+keito_cmd=${KEITO_CLI_BIN:-keito}
+cmd=("$keito_cmd" --json)
 if [ -n "$workspace_id" ]; then
   cmd+=(--workspace "$workspace_id")
 fi

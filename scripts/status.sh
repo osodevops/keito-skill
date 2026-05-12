@@ -11,6 +11,7 @@ script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
 
 cwd=$(pwd -P)
 config_path=$(keito_find_config "$cwd" 2>/dev/null || true)
+keito_cmd=${KEITO_CLI_BIN:-keito}
 
 if [ -z "$config_path" ]; then
   echo "Keito tracking: untracked"
@@ -19,12 +20,24 @@ if [ -z "$config_path" ]; then
 fi
 
 echo "Keito tracking: configured"
+echo "Current directory: $cwd"
 echo "Config: $config_path"
-echo "Project: $(keito_yaml_get "$config_path" "project_name" "$(keito_yaml_get "$config_path" "project_id" "")")"
-echo "Task: $(keito_yaml_get "$config_path" "task_name" "$(keito_yaml_get "$config_path" "task_id" "")")"
+workspace_id=$(keito_yaml_get "$config_path" "workspace_id" "")
+client_id=$(keito_yaml_get "$config_path" "client_id" "")
+client_name=$(keito_yaml_get "$config_path" "client_name" "$client_id")
+project_id=$(keito_yaml_get "$config_path" "project_id" "")
+project_name=$(keito_yaml_get "$config_path" "project_name" "$project_id")
+task_id=$(keito_yaml_get "$config_path" "task_id" "")
+task_name=$(keito_yaml_get "$config_path" "task_name" "$task_id")
+echo "Workspace: ${workspace_id:-default}"
+echo "Client: $client_name ($client_id)"
+echo "Project: $project_name ($project_id)"
+echo "Task: $task_name ($task_id)"
 echo "Enabled: $(keito_yaml_get "$config_path" "agent_tracking.enabled" "true")"
 echo "Source: $(keito_yaml_get "$config_path" "agent_tracking.source" "agent")"
+echo "Draft metadata: $(keito_yaml_get "$config_path" "agent_tracking.draft" "true")"
 echo "Min duration: $(keito_yaml_get "$config_path" "agent_tracking.min_duration_seconds" "60")s"
+echo "Max duration: $(keito_yaml_get "$config_path" "agent_tracking.max_duration_seconds" "28800")s"
 
 state_file=$(keito_latest_state_for_cwd "$cwd" 2>/dev/null || true)
 if [ -n "$state_file" ] && [ -f "$state_file" ]; then
@@ -41,8 +54,15 @@ else
   echo "Current session: none recorded"
 fi
 
-if command -v keito >/dev/null 2>&1; then
+last_error=$(grep ' \[ERROR\] ' "$(keito_log_file)" 2>/dev/null | tail -n 1 || true)
+if [ -n "$last_error" ]; then
+  echo "Last hook error: $last_error"
+else
+  echo "Last hook error: none"
+fi
+
+if [ -n "${KEITO_CLI_BIN:-}" ] || command -v "$keito_cmd" >/dev/null 2>&1; then
   echo
   echo "Today's agent entries:"
-  keito --json time list --today --source agent --limit 20 2>/dev/null || echo "Unable to query Keito CLI."
+  "$keito_cmd" --json time list --today --source agent --limit 20 2>/dev/null || echo "Unable to query Keito CLI."
 fi

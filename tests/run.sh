@@ -71,6 +71,7 @@ chmod +x "$tmp/bin/keito"
 
 export PATH="$tmp/bin:$PATH"
 export KEITO_FAKE_CALLS="$tmp/keito-calls.log"
+export KEITO_CLI_BIN="$tmp/bin/keito"
 
 payload=$(jq -n --arg cwd "$tmp/repo" --arg session_id "sess_test" \
   '{cwd: $cwd, session_id: $session_id, last_assistant_message: "Implemented a local test feature."}')
@@ -105,24 +106,123 @@ if grep -q -- "short_session" "$KEITO_FAKE_CALLS"; then
   exit 1
 fi
 
+mkdir -p "$tmp/repo-alpha/.keito" "$tmp/repo-beta/.keito" "$tmp/untracked-repo"
+cat > "$tmp/repo-alpha/.keito/config.yml" <<'YAML'
+version: 1
+workspace_id: co_test
+client_id: c_alpha
+project_id: p_alpha
+project_name: "Project Alpha"
+task_id: t_alpha
+task_name: "Development"
+agent_tracking:
+  enabled: true
+  source: agent
+  draft: true
+  min_duration_seconds: 60
+  max_duration_seconds: 28800
+  redact_notes: false
+metadata:
+  env: alpha
+YAML
+cat > "$tmp/repo-beta/.keito/config.yml" <<'YAML'
+version: 1
+workspace_id: co_test
+client_id: c_beta
+project_id: p_beta
+project_name: "Project Beta"
+task_id: t_beta
+task_name: "Development"
+agent_tracking:
+  enabled: true
+  source: agent
+  draft: true
+  min_duration_seconds: 60
+  max_duration_seconds: 28800
+  redact_notes: false
+metadata:
+  env: beta
+YAML
+
+alpha_payload=$(jq -n --arg cwd "$tmp/repo-alpha" --arg session_id "sess_alpha" \
+  '{cwd: $cwd, session_id: $session_id, last_assistant_message: "Alpha repo work."}')
+beta_payload=$(jq -n --arg cwd "$tmp/repo-beta" --arg session_id "sess_beta" \
+  '{cwd: $cwd, session_id: $session_id, last_assistant_message: "Beta repo work."}')
+untracked_payload=$(jq -n --arg cwd "$tmp/untracked-repo" --arg session_id "sess_untracked" \
+  '{cwd: $cwd, session_id: $session_id}')
+
+"$repo_root/hooks/session-start.sh" <<< "$alpha_payload"
+"$repo_root/hooks/session-start.sh" <<< "$beta_payload"
+"$repo_root/hooks/session-start.sh" <<< "$untracked_payload"
+
+for tracked_state in "$KEITO_SKILL_HOME/sessions/sess_alpha.json" "$KEITO_SKILL_HOME/sessions/sess_beta.json"; do
+  [ -f "$tracked_state" ]
+  jq '.started_epoch = (.started_epoch - 65)' "$tracked_state" > "$tracked_state.tmp"
+  mv "$tracked_state.tmp" "$tracked_state"
+done
+
+"$repo_root/hooks/session-end.sh" <<< "$alpha_payload"
+"$repo_root/hooks/session-end.sh" <<< "$beta_payload"
+"$repo_root/hooks/session-end.sh" <<< "$untracked_payload"
+
+alpha_call=$(grep -- "--session-id sess_alpha" "$KEITO_FAKE_CALLS")
+beta_call=$(grep -- "--session-id sess_beta" "$KEITO_FAKE_CALLS")
+if [[ "$alpha_call" != *"--project p_alpha"* ]] || [[ "$alpha_call" == *"--project p_beta"* ]]; then
+  echo "Expected alpha repo session to use only alpha project config" >&2
+  exit 1
+fi
+if [[ "$beta_call" != *"--project p_beta"* ]] || [[ "$beta_call" == *"--project p_alpha"* ]]; then
+  echo "Expected beta repo session to use only beta project config" >&2
+  exit 1
+fi
+if grep -q -- "sess_untracked" "$KEITO_FAKE_CALLS"; then
+  echo "Expected untracked repo session not to log time" >&2
+  exit 1
+fi
+
 mkdir -p "$tmp/setup-repo"
 (
   cd "$tmp/setup-repo"
-  printf '1\n1\n1\nY\n' | "$repo_root/scripts/setup-wizard.sh" >/dev/null
+  printf '1\n1\n1\nY\nY\n' | "$repo_root/scripts/setup-wizard.sh" >/dev/null
 )
 [ -f "$tmp/setup-repo/.keito/config.yml" ]
 grep -q -- "client_id: c1" "$tmp/setup-repo/.keito/config.yml"
 grep -q -- "project_id: p1" "$tmp/setup-repo/.keito/config.yml"
 grep -q -- "task_id: t1" "$tmp/setup-repo/.keito/config.yml"
 
+status_output=$(
+  cd "$tmp/setup-repo"
+  "$repo_root/scripts/status.sh"
+)
+grep -q -- "Workspace: co_test" <<< "$status_output"
+grep -q -- "Client: Client A (c1)" <<< "$status_output"
+grep -q -- "Project: Project A (p1)" <<< "$status_output"
+
+(
+  cd "$tmp/setup-repo"
+  printf 'Y\n' | "$repo_root/scripts/disable.sh" >/dev/null
+)
+[ ! -f "$tmp/setup-repo/.keito/config.yml" ]
+find "$tmp/setup-repo/.keito" -name 'config.yml.disabled*' | grep -q .
+
 mkdir -p "$tmp/setup-create-repo"
 (
   cd "$tmp/setup-create-repo"
-  printf '2\nNew Client\n1\nNew Project\n1\nY\n' | "$repo_root/scripts/setup-wizard.sh" >/dev/null
+  printf '2\nNew Client\n1\nNew Project\n1\nY\nY\n' | "$repo_root/scripts/setup-wizard.sh" >/dev/null
 )
 [ -f "$tmp/setup-create-repo/.keito/config.yml" ]
 grep -q -- "client_id: c_new" "$tmp/setup-create-repo/.keito/config.yml"
 grep -q -- "project_id: p_new" "$tmp/setup-create-repo/.keito/config.yml"
+
+mkdir -p "$tmp/setup-cancel-repo"
+(
+  cd "$tmp/setup-cancel-repo"
+  printf '1\n1\n1\nY\nn\n' | "$repo_root/scripts/setup-wizard.sh" >/dev/null
+)
+if [ -e "$tmp/setup-cancel-repo/.keito/config.yml" ]; then
+  echo "Expected setup wizard cancellation not to write config" >&2
+  exit 1
+fi
 
 mkdir -p "$tmp/setup-fail-repo"
 set +e
