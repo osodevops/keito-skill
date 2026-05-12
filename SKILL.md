@@ -19,8 +19,13 @@ body.
 When the user runs `/track-time-keito`, run:
 
 ```bash
+if ! command -v keito >/dev/null 2>&1; then scripts/install-cli.sh; fi
+keito skill install --skip-skills-add
 scripts/setup-wizard.sh
 ```
+
+If `keito auth status` reports unauthenticated, stop before setup and tell the
+user to run `keito auth login`. Do not ask for or print API keys.
 
 When the user asks for tracking status, run:
 
@@ -57,5 +62,6 @@ Summarise the returned entries by duration, project, task, and notes.
   another client or project.
 - Never create a time entry from the skill body. The session-end hook owns
   duration measurement and writes exactly one entry per session.
-- If the Keito CLI is missing or unauthenticated, tell the user to run
-  `keito auth login` or set `KEITO_API_KEY` and `KEITO_ACCOUNT_ID`.
+- If the Keito CLI is missing, run `scripts/install-cli.sh`.
+- If the Keito CLI is unauthenticated, tell the user to run `keito auth login`
+  or set `KEITO_API_KEY` and `KEITO_ACCOUNT_ID`.

@@ -17,8 +17,12 @@ shell_quote() {
 }
 
 mkdir -p "$(dirname "$dest")" "$(dirname "$settings")"
-rm -rf "$dest"
-cp -R "$source_dir" "$dest"
+dest_dir=$(cd "$(dirname "$dest")" && pwd -P)
+dest_physical="$dest_dir/$(basename "$dest")"
+if [ "$source_dir" != "$dest_physical" ]; then
+  rm -rf "$dest"
+  cp -R "$source_dir" "$dest"
+fi
 
 [ -f "$settings" ] || printf '{}\n' > "$settings"
 keito_env=""
