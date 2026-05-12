@@ -13,6 +13,7 @@ The public install path should use:
 
 ```bash
 npx --yes skills@1.5.6 add osodevops/keito-skill -g -a codex -a claude-code -s keito-time-track -y --copy
+claude plugin marketplace add osodevops/keito-skill
 ```
 
 ## Supply Chain Rules
@@ -23,6 +24,8 @@ npx --yes skills@1.5.6 add osodevops/keito-skill -g -a codex -a claude-code -s k
 - Workflows should run with least-privilege `permissions`.
 - Do not commit `.keito/config.yml`, API keys, or live customer/project IDs.
 - Keep examples in `keito-time-track/assets/` synthetic and non-sensitive.
+- Keep Claude Code plugin metadata under `.claude-plugin/` validated before
+  release.
 
 ## Local Checks
 
@@ -37,6 +40,9 @@ bash -n keito-time-track/hooks/session-start.sh keito-time-track/hooks/session-e
 
 npx --yes skills-ref@0.1.5 validate keito-time-track
 npx --yes skills@1.5.6 add . -l
+jq empty .claude-plugin/plugin.json .claude-plugin/marketplace.json hooks/hooks.json
+claude plugin validate .
+claude plugin validate .claude-plugin/plugin.json
 
 shellcheck -P keito-time-track keito-time-track/hooks/session-start.sh \
   keito-time-track/hooks/session-end.sh keito-time-track/hooks/lib/*.sh \

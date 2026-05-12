@@ -24,6 +24,9 @@ bash -n keito-time-track/hooks/session-start.sh keito-time-track/hooks/session-e
 
 npx --yes skills-ref@0.1.5 validate keito-time-track
 npx --yes skills@1.5.6 add . -l
+jq empty .claude-plugin/plugin.json .claude-plugin/marketplace.json hooks/hooks.json
+claude plugin validate .
+claude plugin validate .claude-plugin/plugin.json
 
 shellcheck -P keito-time-track keito-time-track/hooks/session-start.sh \
   keito-time-track/hooks/session-end.sh keito-time-track/hooks/lib/*.sh \
@@ -40,6 +43,7 @@ real Keito account or create real time entries.
 - Do not commit `.keito/config.yml`.
 - Do not commit real API keys, account IDs, client IDs, project IDs, or task IDs.
 - Use `osodevops/keito-skill` in public install examples.
+- Use `OSO` for publisher/owner-facing brand text.
 - Keep the installer package pinned to `skills@1.5.6` unless intentionally
   reviewed and updated.
 - Pin GitHub Actions to full commit SHAs.

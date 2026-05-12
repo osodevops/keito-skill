@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "KEITO_AGENT_TYPE=claude-code \"${CLAUDE_PLUGIN_ROOT}/keito-time-track/hooks/session-start.sh\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "KEITO_AGENT_TYPE=claude-code \"${CLAUDE_PLUGIN_ROOT}/keito-time-track/hooks/session-end.sh\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
