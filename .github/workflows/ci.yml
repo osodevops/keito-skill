@@ -40,6 +40,38 @@ jobs:
       - name: Validate Agent Skill
         run: npx --yes skills-ref@0.1.5 validate keito-time-track
 
+      - name: Validate skill description
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          text = Path("keito-time-track/SKILL.md").read_text(encoding="utf-8")
+          frontmatter = text.split("---", 2)[1]
+          lines = frontmatter.splitlines()
+          description = []
+          capture = False
+          for line in lines:
+              if line.startswith("description:"):
+                  capture = True
+                  continue
+              if capture and line and not line.startswith((" ", "\t")):
+                  break
+              if capture:
+                  description.append(line.strip())
+          value = " ".join(part for part in description if part).strip()
+          lowered = value.lower()
+          if not value:
+              raise SystemExit("SKILL.md description is required")
+          if len(value) > 1024:
+              raise SystemExit("SKILL.md description must be <= 1024 characters")
+          if "<" in value or ">" in value:
+              raise SystemExit("SKILL.md description must not contain XML-like angle brackets")
+          if "anthropic" in lowered or "claude" in lowered:
+              raise SystemExit("SKILL.md description must not contain reserved provider words")
+          PY
+
+      - name: Validate Claude plugin metadata
+        run: jq empty .claude-plugin/plugin.json .claude-plugin/marketplace.json hooks/hooks.json
+
       - name: Run skill tests
         run: tests/run.sh
 
@@ -63,5 +95,14 @@ jobs:
         run: |
           if git grep -nE 'uses:[[:space:]]+[^#]+@(v[0-9]+|main|master|latest)' -- .github/workflows; then
             echo "::error::GitHub Actions must be pinned to full commit SHAs"
+            exit 1
+          fi
+
+      - name: Enforce OSO publisher branding
+        run: |
+          mixed_brand='Oso ''DevOps'
+          upper_brand='OSO ''DevOps'
+          if git grep -nE "${mixed_brand}|${upper_brand}" -- . ':!.git'; then
+            echo "::error::Use OSO for publisher-facing brand text"
             exit 1
           fi

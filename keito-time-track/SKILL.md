@@ -1,10 +1,10 @@
 ---
 name: keito-time-track
-description: |
-  Track billable time for Claude Code or Codex coding sessions and log entries
-  to Keito. Use this skill when the user asks to set up time tracking for a
-  repo, check tracking status, pause or resume tracking for the current
-  session, or query today's logged agent entries.
+description: >
+  Track billable AI coding-session time to Keito through the Keito CLI. Use
+  when the user asks to set up repository time tracking, install or configure
+  the Keito skill, log agent work, check tracking status, pause or resume
+  tracking, disable tracking, or review today's source=agent time entries.
 ---
 
 # Keito Time Track
@@ -16,7 +16,8 @@ body.
 
 ## Commands
 
-When the user runs `/track-time-keito`, run:
+When the user asks to set up Keito tracking for the current repo, or invokes
+this skill directly with `/track-time-keito` or `/keito-time-track:keito-time-track`, run:
 
 ```bash
 if ! command -v keito >/dev/null 2>&1; then scripts/install-cli.sh; fi

@@ -1,0 +1,34 @@
+{
+  "name": "keito",
+  "owner": {
+    "name": "OSO"
+  },
+  "description": "Keito plugins for AI coding-session time tracking.",
+  "plugins": [
+    {
+      "name": "keito-time-track",
+      "source": "./",
+      "description": "Track billable AI coding-session time in Keito through the Keito CLI.",
+      "homepage": "https://keito.ai/docs/integrations/skills",
+      "repository": "https://github.com/osodevops/keito-skill",
+      "license": "MIT",
+      "keywords": [
+        "agent-skills",
+        "claude-code",
+        "claude-skill",
+        "codex",
+        "codex-cli",
+        "skill",
+        "time-tracking",
+        "keito"
+      ],
+      "category": "Productivity",
+      "tags": [
+        "agent-skills",
+        "claude-code",
+        "time-tracking",
+        "keito"
+      ]
+    }
+  ]
+}

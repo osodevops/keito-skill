@@ -10,6 +10,9 @@ Keito time entries. The installable Agent Skill lives in
 [`keito-time-track/`](keito-time-track/), so the skill folder name matches the
 `name` in `SKILL.md`.
 
+GitHub topics for discovery: `agent-skills`, `claude-code`, `claude-skill`,
+`codex`, `codex-cli`, `skill`, `time-tracking`, `keito`.
+
 ## What It Does
 
 - Installs Codex and Claude Code lifecycle hooks.
@@ -37,6 +40,20 @@ Audit-first install:
 ```bash
 npx --yes skills@1.5.6 add osodevops/keito-skill -g -a codex -a claude-code -s keito-time-track -y --copy
 keito skill install --skip-skills-add
+```
+
+Claude Code plugin install:
+
+```text
+/plugin marketplace add osodevops/keito-skill
+/plugin install keito-time-track@keito
+```
+
+CLI equivalent:
+
+```bash
+claude plugin marketplace add osodevops/keito-skill
+claude plugin install keito-time-track@keito
 ```
 
 If the CLI is not installed yet, the skill can guide the user through
@@ -105,6 +122,9 @@ See [SECURITY.md](SECURITY.md) for reporting and supply-chain expectations.
 ```bash
 npx --yes skills-ref@0.1.5 validate keito-time-track
 npx --yes skills@1.5.6 add . -l
+jq empty .claude-plugin/plugin.json .claude-plugin/marketplace.json hooks/hooks.json
+claude plugin validate .
+claude plugin validate .claude-plugin/plugin.json
 tests/run.sh
 ```
 
