@@ -6,7 +6,9 @@
 [![Keito CLI](https://img.shields.io/badge/requires-keito%20CLI-111827.svg)](https://github.com/osodevops/keito-cli)
 
 Portable Agent Skill for recording Claude Code and Codex coding sessions as
-Keito time entries.
+Keito time entries. The installable Agent Skill lives in
+[`keito-time-track/`](keito-time-track/), so the skill folder name matches the
+`name` in `SKILL.md`.
 
 ## What It Does
 
@@ -38,7 +40,8 @@ keito skill install --skip-skills-add
 ```
 
 If the CLI is not installed yet, the skill can guide the user through
-`scripts/install-cli.sh`, then `keito auth login`, then `keito skill install`.
+`keito-time-track/scripts/install-cli.sh`, then `keito auth login`, then
+`keito skill install`.
 
 ## Set Up A Repo
 
@@ -48,28 +51,29 @@ From a client repository:
 /track-time-keito
 ```
 
-The skill runs `scripts/setup-wizard.sh`, which uses the authenticated Keito CLI
-to pick an existing client, project, and task, then asks for confirmation before
-writing the repo-local `.keito/config.yml`.
+The skill runs `keito-time-track/scripts/setup-wizard.sh`, which uses the
+authenticated Keito CLI to pick an existing client, project, and task, then
+asks for confirmation before writing the repo-local `.keito/config.yml`.
 
 Each repository needs its own `.keito/config.yml`. The hooks search upward only
 within the current Git worktree, so one client or project config is not reused
 from a neighbouring repository.
 
-Do not commit `.keito/config.yml`; commit `examples/config.example.yml` only as
-documentation for the expected shape.
+Do not commit `.keito/config.yml`; keep
+[`keito-time-track/assets/config.example.yml`](keito-time-track/assets/config.example.yml)
+as documentation for the expected shape.
 
 To disable tracking for a repository:
 
 ```bash
-scripts/disable.sh
+keito-time-track/scripts/disable.sh
 ```
 
 ## Runtime
 
-- `hooks/session-start.sh` records local state when a tracked repo session
+- `keito-time-track/hooks/session-start.sh` records local state when a tracked repo session
   starts.
-- `hooks/session-end.sh` computes wall-clock duration and calls:
+- `keito-time-track/hooks/session-end.sh` computes wall-clock duration and calls:
 
 ```bash
 keito --json time session-record \
@@ -99,6 +103,8 @@ See [SECURITY.md](SECURITY.md) for reporting and supply-chain expectations.
 ## Local Verification
 
 ```bash
+npx --yes skills-ref@0.1.5 validate keito-time-track
+npx --yes skills@1.5.6 add . -l
 tests/run.sh
 ```
 

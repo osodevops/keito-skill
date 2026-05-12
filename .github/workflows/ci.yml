@@ -28,12 +28,17 @@ jobs:
 
       - name: Syntax check
         run: |
-          bash -n hooks/session-end.sh scripts/setup-wizard.sh scripts/status.sh \
-            scripts/disable.sh scripts/install-cli.sh installers/install-codex.sh \
-            installers/install-claude-code.sh tests/run.sh
+          bash -n keito-time-track/hooks/session-start.sh keito-time-track/hooks/session-end.sh \
+            keito-time-track/scripts/setup-wizard.sh keito-time-track/scripts/status.sh \
+            keito-time-track/scripts/disable.sh keito-time-track/scripts/install-cli.sh \
+            keito-time-track/installers/install-codex.sh \
+            keito-time-track/installers/install-claude-code.sh tests/run.sh
 
       - name: ShellCheck
-        run: shellcheck hooks/session-start.sh hooks/session-end.sh hooks/lib/*.sh scripts/*.sh installers/*.sh tests/run.sh
+        run: shellcheck -P keito-time-track keito-time-track/hooks/session-start.sh keito-time-track/hooks/session-end.sh keito-time-track/hooks/lib/*.sh keito-time-track/scripts/*.sh keito-time-track/installers/*.sh tests/run.sh
+
+      - name: Validate Agent Skill
+        run: npx --yes skills-ref@0.1.5 validate keito-time-track
 
       - name: Run skill tests
         run: tests/run.sh

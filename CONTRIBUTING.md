@@ -7,20 +7,27 @@ installers and local test harness.
 
 Keep the installed skill payload focused:
 
-- `SKILL.md` contains the agent-facing workflow.
-- `hooks/`, `scripts/`, and `installers/` contain executable behavior.
-- `examples/` contains synthetic examples only.
+- `keito-time-track/SKILL.md` contains the agent-facing workflow.
+- `keito-time-track/hooks/`, `keito-time-track/scripts/`, and
+  `keito-time-track/installers/` contain executable behavior.
+- `keito-time-track/assets/` contains synthetic examples and templates only.
 - `README.md`, `SECURITY.md`, and this file are public repository docs.
 
 ## Local Verification
 
 ```bash
-bash -n hooks/session-start.sh hooks/session-end.sh scripts/setup-wizard.sh \
-  scripts/status.sh scripts/disable.sh scripts/install-cli.sh \
-  installers/install-codex.sh installers/install-claude-code.sh tests/run.sh
+bash -n keito-time-track/hooks/session-start.sh keito-time-track/hooks/session-end.sh \
+  keito-time-track/scripts/setup-wizard.sh keito-time-track/scripts/status.sh \
+  keito-time-track/scripts/disable.sh keito-time-track/scripts/install-cli.sh \
+  keito-time-track/installers/install-codex.sh \
+  keito-time-track/installers/install-claude-code.sh tests/run.sh
 
-shellcheck hooks/session-start.sh hooks/session-end.sh hooks/lib/*.sh \
-  scripts/*.sh installers/*.sh tests/run.sh
+npx --yes skills-ref@0.1.5 validate keito-time-track
+npx --yes skills@1.5.6 add . -l
+
+shellcheck -P keito-time-track keito-time-track/hooks/session-start.sh \
+  keito-time-track/hooks/session-end.sh keito-time-track/hooks/lib/*.sh \
+  keito-time-track/scripts/*.sh keito-time-track/installers/*.sh tests/run.sh
 
 tests/run.sh
 ```
