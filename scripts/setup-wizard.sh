@@ -199,6 +199,7 @@ agent_tracking:
   max_duration_seconds: 28800
   redact_notes: false
 metadata:
+  integration: keito_skill
   skill: keito-time-track
 EOF
 mv "$config_tmp" "$config_path"

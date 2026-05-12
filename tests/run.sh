@@ -189,6 +189,7 @@ mkdir -p "$tmp/setup-repo"
 grep -q -- "client_id: c1" "$tmp/setup-repo/.keito/config.yml"
 grep -q -- "project_id: p1" "$tmp/setup-repo/.keito/config.yml"
 grep -q -- "task_id: t1" "$tmp/setup-repo/.keito/config.yml"
+grep -q -- "integration: keito_skill" "$tmp/setup-repo/.keito/config.yml"
 
 status_output=$(
   cd "$tmp/setup-repo"
@@ -213,6 +214,7 @@ mkdir -p "$tmp/setup-create-repo"
 [ -f "$tmp/setup-create-repo/.keito/config.yml" ]
 grep -q -- "client_id: c_new" "$tmp/setup-create-repo/.keito/config.yml"
 grep -q -- "project_id: p_new" "$tmp/setup-create-repo/.keito/config.yml"
+grep -q -- "integration: keito_skill" "$tmp/setup-create-repo/.keito/config.yml"
 
 mkdir -p "$tmp/setup-cancel-repo"
 (
