@@ -1,4 +1,0 @@
-name: keito-time-track
-description: Track Codex coding sessions as Keito agent time entries.
-version: 0.1.0
-entrypoint: SKILL.md
