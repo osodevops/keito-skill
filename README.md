@@ -1,9 +1,22 @@
 # Keito Time Track Skill
 
 [![CI](https://github.com/osodevops/keito-skill/actions/workflows/ci.yml/badge.svg)](https://github.com/osodevops/keito-skill/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Installer](https://img.shields.io/badge/skills-1.5.6-blue.svg)](https://www.npmjs.com/package/skills/v/1.5.6)
+[![Keito CLI](https://img.shields.io/badge/requires-keito%20CLI-111827.svg)](https://github.com/osodevops/keito-cli)
 
 Portable Agent Skill for recording Claude Code and Codex coding sessions as
 Keito time entries.
+
+## What It Does
+
+- Installs Codex and Claude Code lifecycle hooks.
+- Runs a repo setup wizard that maps one Git worktree to one Keito company,
+  client, project, and task.
+- Records one Keito `source=agent` time entry when a tracked coding session
+  ends.
+- Keeps credentials in the Keito CLI; this skill stores only repo-local IDs in
+  `.keito/config.yml`.
 
 ## Install
 
@@ -20,7 +33,7 @@ the local CLI/auth environment. The skill itself is not published to npm.
 Audit-first install:
 
 ```bash
-npx --yes skills@1.5.6 add keito-ai/keito-skill -g -a codex -a claude-code -s keito-time-track -y --copy
+npx --yes skills@1.5.6 add osodevops/keito-skill -g -a codex -a claude-code -s keito-time-track -y --copy
 keito skill install --skip-skills-add
 ```
 
@@ -42,6 +55,9 @@ writing the repo-local `.keito/config.yml`.
 Each repository needs its own `.keito/config.yml`. The hooks search upward only
 within the current Git worktree, so one client or project config is not reused
 from a neighbouring repository.
+
+Do not commit `.keito/config.yml`; commit `examples/config.example.yml` only as
+documentation for the expected shape.
 
 To disable tracking for a repository:
 
@@ -76,6 +92,9 @@ never fail the agent session.
 - `npx` is only used to run the pinned `skills@1.5.6` installer package.
 - GitHub Actions in this repo are pinned to commit SHAs and run with read-only
   repository permissions.
+- CI rejects floating `skills` installer references and unpinned GitHub Actions.
+
+See [SECURITY.md](SECURITY.md) for reporting and supply-chain expectations.
 
 ## Local Verification
 
@@ -85,3 +104,6 @@ tests/run.sh
 
 The test harness uses a fake `keito` executable and temporary session state, so
 it does not touch real Keito credentials or create real time entries.
+
+For contribution workflow and full local checks, see
+[CONTRIBUTING.md](CONTRIBUTING.md).
