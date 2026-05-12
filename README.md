@@ -1,5 +1,7 @@
 # Keito Time Track Skill
 
+[![CI](https://github.com/osodevops/keito-skill/actions/workflows/ci.yml/badge.svg)](https://github.com/osodevops/keito-skill/actions/workflows/ci.yml)
+
 Portable Agent Skill for recording Claude Code and Codex coding sessions as
 Keito time entries.
 
@@ -12,13 +14,13 @@ keito skill install
 ```
 
 The Keito CLI is the runtime engine. `keito skill install` installs this skill
-with `npx skills`, configures Claude Code and Codex hooks, and verifies the
-local CLI/auth environment.
+from the GitHub skill repo, configures Claude Code and Codex hooks, and verifies
+the local CLI/auth environment. The skill itself is not published to npm.
 
 Audit-first install:
 
 ```bash
-npx skills add keito-ai/keito-skill -g -a codex -a claude-code -s keito-time-track -y --copy
+npx --yes skills@1.5.6 add keito-ai/keito-skill -g -a codex -a claude-code -s keito-time-track -y --copy
 keito skill install --skip-skills-add
 ```
 
@@ -71,6 +73,9 @@ never fail the agent session.
 - `.keito/config.yml` stores company/client/project/task IDs, not credentials.
 - Session notes can be redacted with `agent_tracking.redact_notes: true`.
 - Entries are tagged with `metadata.integration=keito_skill` and `source=agent`.
+- `npx` is only used to run the pinned `skills@1.5.6` installer package.
+- GitHub Actions in this repo are pinned to commit SHAs and run with read-only
+  repository permissions.
 
 ## Local Verification
 
