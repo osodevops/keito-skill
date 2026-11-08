@@ -17,7 +17,10 @@ jq empty .claude-plugin/plugin.json .claude-plugin/marketplace.json hooks/hooks.
 ```
 
 The suite uses temporary HOME and a fake CLI, including injected configuration
-replacement failure. Never test installers against a developer's real settings.
+replacement failure, real SIGTERM/SIGKILL at publication boundaries, setup
+failure/recovery, strict command ownership and parent-symlink refusal. The
+one-second installed-host timeout test uses a core that ignores TERM; its
+assertion is not relaxed to a longer synthetic allowance. Never test installers against a developer's real settings.
 Real harness trust, exact versions, latency, accepted server records and unsent
 invoice evidence require separate qualification. Do not claim the local suite
 proves those release gates.

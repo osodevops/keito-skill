@@ -16,8 +16,13 @@ CLI owns metadata-only SQLite durability and explicit repository consent.
 Installation must not enable Codex features or grant hook trust automatically.
 
 Malformed settings, unexpected symlinks and modified payloads require explicit
-local recovery. Installer migrations preserve unrelated settings and retain a
-legacy payload backup. An installer manifest states trust unknown and delivery
+local recovery. Parent directories below the resolved approved HOME must also
+be regular directories; ordinary macOS HOME aliases are allowed. Installers
+publish immutable executable generations before switching configuration and
+journal discoverable-payload changes for signal/restart recovery. Generations
+and legacy backups remain available for reviewed recovery. Mapping setup uses
+a separate lock/journal and restores its previous hint on failure. A potentially
+committed core consent is inspected and reapproved explicitly, never replayed. An installer manifest states trust unknown and delivery
 unverified. It never stores API keys or proves billing approval.
 
 Run the temp-HOME tests and checks in CONTRIBUTING.md before release. Real

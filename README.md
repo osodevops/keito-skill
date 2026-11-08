@@ -51,7 +51,7 @@ unverified until a real qualification establishes them.
 From the intended repository, select existing records and approve the mapping:
 
 ```bash
-keito-time-track/scripts/setup-wizard.sh --agent claude-code --agent codex
+keito-time-track/scripts/setup-wizard.sh --agent claude-code --agent codex --install-worker
 ```
 
 For scripted setup, use the CLI directly with explicit project/task IDs and
@@ -59,8 +59,13 @@ confirmation after inspecting the capture policy:
 
 ```bash
 keito --workspace <workspace-id> capture setup --agent codex \
-  --project <project-id> --task <task-id> --confirm
+  --project <project-id> --task <task-id> --confirm --install-worker
 ```
+
+`--install-worker` explicitly requests the local background uploader service on
+macOS. The picker previews that request before confirmation. Omitting it approves
+local queuing only; run the explicit worker setup before claiming automatic
+healthy delivery. The CLI owns service installation and runtime-hash checks.
 
 The user-owned consent ledger is outside the repository. Cloning an enabled
 `.keito/config.yml` never approves collection. Changed or inaccessible mappings
@@ -81,7 +86,7 @@ hint only; installation does not backfill historical sessions.
 installations registered that filename at turn end. Actual SessionEnd uses
 `session-finalize.sh`. All scripts are thin delegates; none calculates duration,
 searches another session, reads transcripts or submits ordinary time entries.
-A one-second watchdog prevents a stalled CLI from blocking coding. A timeout or
+The watchdog budgets TERM at 650 ms and KILL 25 ms later, leaving launch/cleanup margin inside the one-second host deadline. A timeout or
 failure requires inspecting CLI status; silence does not mean delivery passed.
 
 ```bash
@@ -94,13 +99,33 @@ keito capture disable --repo
 keito-time-track/installers/uninstall.sh --agent codex
 ```
 
-Uninstall removes integration-owned registrations and an unmodified installed
-payload. It preserves unrelated hooks even when they share a registration group.
-Modified files, malformed settings, symlinks and concurrent installation fail
+Installers first durably publish a checksummed hidden generation under the
+selected harness's `.keito-capture-generations` directory. Registered commands
+point there; a version update never overwrites an executable used by an existing
+registration. The JSON switch precedes replacement of the discoverable skill.
+A private journal restores interrupted skill discovery on the next invocation,
+including after SIGKILL. Normal termination also performs recovery. Immutable
+generations remain available across each publication boundary.
+
+Uninstall removes recognized integration-owned registrations and an unmodified
+installed discovery payload. Generations are deliberately retained for recovery
+and rollback; review all remaining configurations before manually removing them.
+Commands that merely mention an adapter path, or combine it with another
+executable, are preserved for review rather than silently deleted. Unrelated hooks
+remain intact even when they share a registration group.
+Modified files, malformed settings, symlinked harness/skills parents or leaves, and concurrent installation fail
 with recovery instructions. Configuration replacement is atomic per file;
 unrelated applications do not participate in the installer's lock, so review a
 reported concurrent-change conflict before retrying. No API keys or raw event
 payloads are stored in the installer manifest.
+
+Repository setup holds a separate local lock and records private recovery data
+before publishing its candidate hint. A core refusal restores the exact previous
+hint, including a disabled mapping. SIGTERM restores it; the next setup recovers
+a SIGKILL journal without replaying consent, then stops for status inspection.
+If core consent committed just before failure, the restored hint differs from
+that binding and the CLI holds capture until explicit review/reapproval. A
+concurrent external mapping edit is preserved and reported instead of overwritten.
 
 ## Claude plugin candidate
 
