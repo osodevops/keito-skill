@@ -29,8 +29,10 @@ portable installer also requires explicit targets:
 keito-time-track/installers/install.sh --agent claude-code --agent codex
 ```
 
-Installers require Bash, Python 3 and a compatible Keito CLI; the optional setup
-picker uses jq. The installer records the selected installed harness version
+Installers require Bash and a compatible native Keito CLI with its verified matching
+`keito-capture-guard` executable. The optional setup picker uses jq. Production
+capture, installation and mapping publication require no Python runtime. Native
+artifact and real-harness qualification remain pending for this candidate. The installer records the selected installed harness version
 when available. `--harness-version` may pin the exact version during a qualified
 rehearsal. A recorded version is provenance, not a compatibility certification.
 
@@ -59,7 +61,8 @@ confirmation after inspecting the capture policy:
 
 ```bash
 keito --workspace <workspace-id> capture setup --agent codex \
-  --project <project-id> --task <task-id> --confirm --install-worker
+  --client <client-id> --project <project-id> --task <task-id> \
+  --write-hint --confirm --install-worker
 ```
 
 `--install-worker` explicitly requests the local background uploader service on
@@ -142,7 +145,9 @@ journal or retry consent blindly.
 
 The root `hooks/hooks.json` supplies the same five Claude lifecycle boundaries.
 Plugin installation uses Claude's normal marketplace workflow; do not combine
-it with direct installation. Plugin hooks use `KEITO_HARNESS_VERSION` when set,
+it with direct installation. The native guard/core pair is configured by managed
+direct installation. A plugin-only installation does not establish that pair
+and remains unqualified. Plugin hooks use `KEITO_HARNESS_VERSION` when set,
 otherwise `unknown`; an unknown version cannot satisfy the real-harness release
 gate. Direct installation pins the observed version in its registered command.
 
@@ -155,8 +160,14 @@ private durable acknowledgement permits flag removal; process exit alone does
 not. Cleanup checks the held marker's exact bytes, size, ownership and inode;
 detected edits remain retained. An unrelated writer can still race the final
 check and unlink, so this is not universal filesystem compare-and-swap. The guard
-starts Python in isolated stdlib-only mode (`-I -S`) to exclude site customization
-and import-path injection before its first instruction. A missing executable,
+runs as a small native Rust executable with no network or database runtime.
+Managed installation binds the exact release core/guard paths and SHA-256 hashes
+in its local receipt and immutable hook generation. These local identities are
+operational metadata and are not included in outbound capture evidence. The
+main CLI verifies the release pair; a local manifest alone does not grant trust.
+The dispatcher requires the selected absolute `KEITO_CAPTURE_GUARD_BIN` and
+`KEITO_CLI_BIN` paths and never substitutes an unverified runtime from PATH.
+A missing executable,
 timeout or pre-handler death after publication therefore leaves evidence
 for the next core run. Live flags block delivery; abandoned flags require the
 core to hold uncertain evidence for inspection and recovery. Do not manually
@@ -196,6 +207,8 @@ npx --yes skills-ref@0.1.5 validate keito-time-track
 jq empty .claude-plugin/plugin.json .claude-plugin/marketplace.json hooks/hooks.json
 ```
 
-Tests use temporary HOME, synthetic events and a fake CLI. They cover adapter
-boundaries, fail-open behavior, installation preservation and rollback; they do
-not qualify real Claude/Codex, database races, network delivery or invoices.
+Shell delegation tests use an explicitly isolated temporary HOME/capture root and
+fake native executables. Native filesystem, ownership, recovery and publication
+fault tests live with the Rust CLI. Historical Python tests are retained as
+development-only reference outside the installed skill. No local tests qualify
+real Claude/Codex dispatch, provider usage, network delivery or invoices.

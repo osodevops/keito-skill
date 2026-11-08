@@ -113,7 +113,7 @@ def owned_hook(hook, dest):
     environment = {}
     while argv and re.match(r'^[A-Za-z_][A-Za-z0-9_]*=', argv[0]):
         key, value = argv.pop(0).split('=', 1)
-        if key not in ('KEITO_CLI_BIN', 'KEITO_AGENT_TYPE', 'KEITO_HARNESS_VERSION'):
+        if key not in ('KEITO_CLI_BIN', 'KEITO_AGENT_TYPE', 'KEITO_HARNESS_VERSION', 'KEITO_CAPTURE_PYTHON'):
             return False
         environment[key] = value
     if argv and argv[0] in ('bash', '/bin/bash', '/usr/bin/bash'):
@@ -185,6 +185,20 @@ def receipt_valid(dest):
         if any(not isinstance(name, str) or PurePosixPath(name).is_absolute() or '..' in PurePosixPath(name).parts
                or not isinstance(digest, str) or not re.fullmatch('[a-f0-9]{64}', digest) for name, digest in files.items()):
             return False
+        pin = state.get('guard_interpreter')
+        if pin is not None:
+            if (not isinstance(pin, dict) or set(pin) != {'path', 'sha256'}
+                    or not isinstance(pin['path'], str) or not pin['path'].startswith('/')
+                    or any(part in ('.', '..') for part in pin['path'].split('/'))
+                    or not isinstance(pin['sha256'], str) or not re.fullmatch('[a-f0-9]{64}', pin['sha256'])):
+                return False
+            # The external image can be upgraded/removed without destroying
+            # ownership of this payload: uninstall must remain possible. Doctor
+            # checks the current image separately; integrity checks bind only
+            # this local operational identity to the generation receipt.
+            key = hashlib.sha256(json.dumps([state.get('agent'), state.get('harness_version'), files, pin], sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+            if state.get('generation') != key:
+                return False
         # Content hashes do not establish that the referenced payload can run.
         # Verify regular files, readable/traversable directories and executable
         # shell entrypoints before reusing or reporting a generation installed.
@@ -219,6 +233,29 @@ def check_runtime():
 
 def valid_version(value):
     return bool(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._:-]{0,63}', value)) and '..' not in value
+
+
+def selected_guard_interpreter():
+    try:
+        path = Path(sys.executable).resolve(strict=True)
+        if not path.is_absolute() or not os.access(path, os.X_OK):
+            raise ValueError()
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC | os.O_NONBLOCK)
+        try:
+            info = os.fstat(fd)
+            if not stat.S_ISREG(info.st_mode) or info.st_size > 512 * 1024 * 1024:
+                raise ValueError()
+            digest = hashlib.sha256()
+            while True:
+                block = os.read(fd, 1024 * 1024)
+                if not block:
+                    break
+                digest.update(block)
+        finally:
+            os.close(fd)
+        return {'path': str(path), 'sha256': digest.hexdigest()}
+    except (OSError, ValueError, TypeError):
+        raise SafeError('The current Python interpreter cannot be verified as a regular executable. Review the installer runtime before retrying; no hook was configured.')
 
 
 def harness_version(agent, explicit):
@@ -297,6 +334,7 @@ def recover(host, dest):
 
 
 def prepare_payload(parent, agent, version):
+    pin = selected_guard_interpreter()
     stage = Path(tempfile.mkdtemp(prefix='.keito-time-track-stage-', dir=parent))
     try:
         tree_hashes(SOURCE)
@@ -305,9 +343,10 @@ def prepare_payload(parent, agent, version):
         for file in stage.rglob('*'):
             file.chmod(0o700 if file.is_dir() or file.suffix in ('.sh', '.py') else 0o600)
         files = tree_hashes(stage)
-        key = hashlib.sha256(json.dumps([agent, version, files], sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+        key = hashlib.sha256(json.dumps([agent, version, files, pin], sort_keys=True, separators=(',', ':')).encode()).hexdigest()
         receipt = {'adapter_contract': CONTRACT, 'agent': agent, 'harness_version': version,
-                   'trusted': 'unknown', 'delivery_verified': False, 'generation': key, 'files': files}
+                   'trusted': 'unknown', 'delivery_verified': False, 'generation': key, 'files': files,
+                   'guard_interpreter': pin}
         (stage / 'capture-install.json').write_text(json.dumps(receipt, indent=2, sort_keys=True) + '\n')
         (stage / 'capture-install.json').chmod(0o600)
         for file in stage.rglob('*'):
@@ -357,9 +396,12 @@ def apply(agent, action, args, binary):
                 generations = host / '.keito-capture-generations'
                 generations.mkdir(mode=0o700, exist_ok=True)
                 generation_stage, key = prepare_payload(generations, agent, version)
+                pin = json.loads((generation_stage / 'capture-install.json').read_text())['guard_interpreter']
                 generation = generations / key
                 if generation.exists():
-                    if generation.is_symlink() or not receipt_valid(generation) or tree_hashes(generation) != tree_hashes(generation_stage):
+                    if (generation.is_symlink() or not receipt_valid(generation)
+                            or json.loads((generation / 'capture-install.json').read_text()).get('guard_interpreter') != pin
+                            or tree_hashes(generation) != tree_hashes(generation_stage)):
                         shutil.rmtree(generation_stage)
                         raise SafeError('An immutable adapter generation changed or cannot execute. Review trusted file permissions and release integrity before reinstalling; no hook configuration was changed.')
                     shutil.rmtree(generation_stage)
@@ -372,7 +414,7 @@ def apply(agent, action, args, binary):
                 hooks = next_data.setdefault('hooks', {})
                 events = {**EVENTS, 'StopFailure' if agent == 'claude-code' else 'Interrupt': 'interrupt'}
                 for event, lifecycle in events.items():
-                    command = 'KEITO_CLI_BIN=' + shlex.quote(binary) + ' ' + shlex.join([
+                    command = 'KEITO_CLI_BIN=' + shlex.quote(binary) + ' KEITO_CAPTURE_PYTHON=' + shlex.quote(pin['path']) + ' ' + shlex.join([
                         str(generation / 'hooks/dispatch.sh'), '--agent', agent, '--event', lifecycle, '--harness-version', version])
                     hooks.setdefault(event, []).append({'hooks': [{'type': 'command', 'command': command, 'timeout': 1}]})
             checked_paths(home, host, dest)

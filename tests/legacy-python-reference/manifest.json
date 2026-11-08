@@ -1,0 +1,26 @@
+[
+  {
+    "former_runtime_path": "hooks/guard.py",
+    "archived_path": "runtime/hooks/guard.py",
+    "sha256": "fe728ba1df6b16a8189d1d831c692fe29a926bd4fce7aee0055884bd5d90b874",
+    "mode": "0o644"
+  },
+  {
+    "former_runtime_path": "installers/manage-hooks.py",
+    "archived_path": "runtime/installers/manage-hooks.py",
+    "sha256": "002f48770032bc0f40ff90d18da50543bd1a7de4895a74d55f0e6dc56e47752b",
+    "mode": "0o644"
+  },
+  {
+    "former_runtime_path": "scripts/approve-mapping.py",
+    "archived_path": "runtime/scripts/approve-mapping.py",
+    "sha256": "5e54bf5509fd543c9e35380005f585a571b479b7657896fae2f31ac7771b4864",
+    "mode": "0o644"
+  },
+  {
+    "former_runtime_path": "tests/adapter_installer_test.py",
+    "archived_path": "adapter_installer_test.py",
+    "sha256": "425ef0311f6d1b542d045485145602598fdd2254ad81d3d60bf8ea49e2351a3b",
+    "mode": "0o644"
+  }
+]

@@ -91,7 +91,8 @@ sys.exit(exit_code)
         self.bin.chmod(0o700)
         self.env = {**os.environ, "HOME": str(self.home), "KEITO_CLI_BIN": str(self.bin),
                     "KEITO_AGENT_TYPE": "codex", "KEITO_HARNESS_VERSION": "0.167.0",
-                    "FAKE_CALLS": str(self.calls), "KEITO_CAPTURE_HOME": str((self.root / 'capture-state').resolve())}
+                    "FAKE_CALLS": str(self.calls), "KEITO_CAPTURE_HOME": str((self.root / 'capture-state').resolve()),
+                    "KEITO_CAPTURE_PYTHON":str(Path(sys.executable).resolve(strict=True))}
         for key in ("CLAUDE_PLUGIN_ROOT", "KEITO_SKILL_HOME", "KEITO_API_KEY", "KEITO_ACCOUNT_ID"):
             self.env.pop(key, None)
         # Warm only the fake Python executable before measuring adapter latency.
@@ -405,6 +406,60 @@ runpy.run_path(script,run_name='__main__')
         self.assertNotEqual(result.returncode, 0)
         self.assertFalse((self.home / ".codex").exists())
         self.assertFalse((self.home / ".claude").exists())
+
+    def test_managed_hooks_pin_canonical_installer_interpreter_and_local_hash(self):
+        self.assertEqual(self.install().returncode,0)
+        dest=self.home/'.codex/skills/keito-time-track'
+        receipt=json.loads((dest/'capture-install.json').read_text())
+        pin=receipt.get('guard_interpreter')
+        self.assertIsInstance(pin,dict,'Managed hooks need a selected verified interpreter, not a per-hook PATH shim lookup')
+        self.assertEqual(set(pin),{'path','sha256'})
+        executable=Path(pin['path'])
+        self.assertEqual(executable,executable.resolve(strict=True))
+        self.assertTrue(executable.is_file() and os.access(executable,os.X_OK))
+        import hashlib
+        self.assertEqual(pin['sha256'],hashlib.sha256(executable.read_bytes()).hexdigest())
+        for groups in self.read_config()['hooks'].values():
+            for group in groups:
+                for hook in group['hooks']:
+                    assignments={p.split('=',1)[0]:p.split('=',1)[1] for p in shlex.split(hook['command']) if p.startswith('KEITO_') and '=' in p}
+                    self.assertEqual(assignments.get('KEITO_CAPTURE_PYTHON'),pin['path'])
+
+    def test_unmanaged_missing_interpreter_pin_never_falls_back_to_path(self):
+        env={**self.env};env.pop('KEITO_CAPTURE_PYTHON')
+        result=self.run_script('hooks/prompt.sh',payload='PRIVATE_UNMANAGED_CANARY',env=env)
+        self.assertEqual((result.returncode,result.stdout,result.stderr),(0,'',''))
+        self.assertEqual(self.recorded(),[],'An unverified PATH shim must not start capture')
+
+    def test_generation_identity_changes_with_selected_interpreter(self):
+        spec=importlib.util.spec_from_file_location('installer_runtime_identity',SKILL/'installers/manage-hooks.py')
+        module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+        parent=self.root/'runtime-generations';parent.mkdir(mode=0o700)
+        keys=[]
+        for name in ('first-interpreter','second-interpreter'):
+            executable=self.root/name;executable.write_text('#!/bin/sh\nexit 0\n# '+name+'\n');executable.chmod(0o700)
+            with mock.patch.object(module.sys,'executable',str(executable)):
+                stage,key=module.prepare_payload(parent,'codex','0.167.0')
+            keys.append(key)
+        self.assertNotEqual(keys[0],keys[1],'An interpreter replacement must not reuse an incompatible generation receipt')
+
+    def test_legacy_receipt_without_pin_still_allows_owned_uninstall(self):
+        self.assertEqual(self.install().returncode,0)
+        receipt=self.home/'.codex/skills/keito-time-track/capture-install.json'
+        data=json.loads(receipt.read_text());data.pop('guard_interpreter',None);receipt.write_text(json.dumps(data))
+        self.assertEqual(self.uninstall().returncode,0)
+        self.assertFalse(receipt.parent.exists())
+
+    def test_generation_cannot_downgrade_its_required_pin_to_legacy_metadata(self):
+        self.assertEqual(self.install().returncode,0)
+        config=self.config_path('codex');before=config.read_bytes()
+        command=self.read_config()['hooks']['Stop'][0]['hooks'][0]['command']
+        executable=Path(next(p for p in shlex.split(command) if p.endswith('/hooks/dispatch.sh')))
+        receipt=executable.parent.parent/'capture-install.json'
+        data=json.loads(receipt.read_text());data.pop('guard_interpreter',None);receipt.write_text(json.dumps(data))
+        result=self.install()
+        self.assertNotEqual(result.returncode,0,'New generations must not reuse a receipt whose required runtime pin disappeared')
+        self.assertEqual(config.read_bytes(),before)
 
     def test_selected_install_idempotent_preserves_mixed_registrations(self):
         for agent in ("claude-code", "codex"):
@@ -876,7 +931,9 @@ runpy.run_path(script, run_name='__main__')
         config = self.config_path("codex")
         current = self.read_config()
         command = current["hooks"]["Stop"][0]["hooks"][0]["command"]
-        literal_argv = shlex.split(command)[1:]
+        literal_argv = shlex.split(command)
+        while literal_argv and literal_argv[0].startswith('KEITO_') and '=' in literal_argv[0]:
+            literal_argv.pop(0)
         marker = self.root / "audit-helper-ran"
         helper = self.root / "audit-helper"
         helper.write_text("#!/bin/sh\nprintf ran > " + shlex.quote(str(marker)) + "\nprintf '%s\\n' " + shlex.quote(str(self.bin)) + "\n")
