@@ -1,6 +1,6 @@
 {
   "name": "keito-time-track",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Capture metadata-only activity through the Keito CLI for review before billing.",
   "author": {
     "name": "OSO",
