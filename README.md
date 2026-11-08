@@ -128,7 +128,7 @@ end-to-end billing workflow.
 
 ```bash
 tests/run.sh
-find keito-time-track tests -name '*.sh' -print0 | xargs -0 bash -n
+find keito-time-track tests -name '*.sh' -print0 | xargs -0 -n1 bash -n
 find keito-time-track tests -name '*.sh' -print0 | xargs -0 shellcheck -P keito-time-track
 npx --yes skills-ref@0.1.5 validate keito-time-track
 jq empty .claude-plugin/plugin.json .claude-plugin/marketplace.json hooks/hooks.json

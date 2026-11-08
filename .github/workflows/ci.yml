@@ -28,7 +28,7 @@ jobs:
 
       - name: Syntax check
         run: |
-          find keito-time-track tests -name "*.sh" -print0 | xargs -0 bash -n
+          find keito-time-track tests -name "*.sh" -print0 | xargs -0 -n1 bash -n
 
       - name: ShellCheck
         run: find keito-time-track tests -name "*.sh" -print0 | xargs -0 shellcheck -P keito-time-track
