@@ -115,8 +115,12 @@ executable, are preserved for review rather than silently deleted. Unrelated hoo
 remain intact even when they share a registration group.
 Modified files, malformed settings, symlinked harness/skills parents or leaves, and concurrent installation fail
 with recovery instructions. Configuration replacement is atomic per file;
-unrelated applications do not participate in the installer's lock, so review a
-reported concurrent-change conflict before retrying. No API keys or raw event
+unrelated applications do not participate in the installer's lock. The installer
+checks the original bytes again immediately before publication, after journal
+and temporary-file fsync. Detected changes are preserved and reported. A writer
+can still race between that final comparison and replacement: this is not
+cross-application compare-and-swap. Avoid editing the selected settings during
+installation and review any reported conflict before retrying. No API keys or raw event
 payloads are stored in the installer manifest.
 
 Repository setup holds a separate local lock and records private recovery data
