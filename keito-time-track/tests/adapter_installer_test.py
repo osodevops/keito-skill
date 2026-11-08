@@ -444,7 +444,7 @@ m.apply('codex','install',SimpleNamespace(confirm_migration=False,harness_versio
                 with self.subTest(boundary=boundary, signal=sig):
                     self.assertEqual(self.install().returncode, 0)
                     result = subprocess.run([sys.executable, "-c", child, str(SKILL / "installers/manage-hooks.py"),
-                                             str(self.bin), boundary, str(sig)], env=self.env, capture_output=True, text=True, timeout=15)
+                                             str(self.bin), boundary, str(int(sig))], env=self.env, capture_output=True, text=True, timeout=15)
                     self.assertIn(result.returncode, (-sig, 128 + sig), result.stderr)
                     for groups in self.read_config()["hooks"].values():
                         for group in groups:
