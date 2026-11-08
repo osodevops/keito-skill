@@ -129,7 +129,14 @@ hint, including a disabled mapping. SIGTERM restores it; the next setup recovers
 a SIGKILL journal without replaying consent, then stops for status inspection.
 If core consent committed just before failure, the restored hint differs from
 that binding and the CLI holds capture until explicit review/reapproval. A
-concurrent external mapping edit is preserved and reported instead of overwritten.
+detected external mapping edit is preserved and reported with its recovery
+journal retained for inspection. Candidate publication and restoration recheck
+the expected bytes after temporary-file fsync, immediately before replacement;
+as with settings, an unrelated writer can still race that final comparison and
+rename. Avoid editing the mapping during setup. On a detected conflict, preserve
+the hint and journal, inspect `keito capture status`, then explicitly reconcile
+the intended mapping and recovery metadata before reapproving. Never delete the
+journal or retry consent blindly.
 
 ## Claude plugin candidate
 
