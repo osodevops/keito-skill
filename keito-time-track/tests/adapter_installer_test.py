@@ -437,7 +437,7 @@ def replace(src,dst):
     real(src,dst)
     if hit and boundary!='config-before':os.kill(os.getpid(),sig)
 m.os.replace=replace
-m.apply('codex','install',SimpleNamespace(confirm_migration=False,harness_version='0.167.1'),sys.argv[2])
+m.apply('codex','install',SimpleNamespace(confirm_migration=False,harness_version='0.167.1-'+boundary+'-'+str(sig)),sys.argv[2])
 """
         for boundary in ("payload-backup", "config-before", "config-after", "generation"):
             for sig in (signal.SIGTERM, signal.SIGKILL):
