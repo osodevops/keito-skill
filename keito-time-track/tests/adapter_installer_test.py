@@ -8,6 +8,11 @@ import subprocess
 import tempfile
 import time
 import unittest
+from unittest import mock
+import importlib.util
+from types import SimpleNamespace
+import sys
+sys.dont_write_bytecode = True
 
 SKILL = Path(__file__).resolve().parents[1]
 EVENTS = {"session-start.sh": "session-start", "prompt.sh": "prompt", "stop.sh": "stop",
@@ -25,10 +30,26 @@ class AdapterInstallerTest(unittest.TestCase):
         self.bin = self.root / "keito fake"
         self.bin.write_text("""#!/usr/bin/env python3
 import json, os, sys, time
+from pathlib import Path
 if sys.argv[1:] == ['capture', '--help']:
     sys.exit(0 if os.environ.get('FAKE_OLD_CLI') != '1' else 2)
+record = {'args': sys.argv[1:], 'payload': sys.stdin.read() if sys.argv[1:3] == ['capture', 'hook'] else ''}
+if 'setup' in sys.argv:
+    record['mapping_at_setup'] = json.loads((Path.cwd() / '.keito/config.yml').read_text())
 with open(os.environ['FAKE_CALLS'], 'a') as stream:
-    stream.write(json.dumps({'args': sys.argv[1:], 'payload': sys.stdin.read()}) + '\\n')
+    stream.write(json.dumps(record) + '\\n')
+if os.environ.get('FAKE_PICKER') == '1':
+    if 'auth' in sys.argv:
+        print(json.dumps({'authenticated': True, 'api_key_valid': True, 'account_id': 'co_test'}))
+    elif 'clients' in sys.argv:
+        print(json.dumps([{'id': 'c1', 'name': 'Synthetic client'}]))
+    elif 'tasks' in sys.argv:
+        print(json.dumps([{'id': 't1', 'name': 'Development'}]))
+    elif 'projects' in sys.argv:
+        print(json.dumps([{'id': 'p1', 'name': 'Synthetic project'}]))
+    else:
+        print('{}')
+    sys.exit(0)
 print('PRIVATE_CLI_OUTPUT_CANARY')
 print('PRIVATE_CLI_ERROR_CANARY', file=sys.stderr)
 time.sleep(float(os.environ.get('FAKE_SLEEP', '0')))
@@ -40,6 +61,8 @@ sys.exit(int(os.environ.get('FAKE_EXIT', '0')))
                     "FAKE_CALLS": str(self.calls)}
         for key in ("CLAUDE_PLUGIN_ROOT", "KEITO_SKILL_HOME", "KEITO_API_KEY", "KEITO_ACCOUNT_ID"):
             self.env.pop(key, None)
+        # Warm only the fake Python executable before measuring adapter latency.
+        subprocess.run([str(self.bin), "capture", "--help"], env=self.env, check=True, timeout=5)
 
     def run_script(self, path, *args, payload="", env=None):
         return subprocess.run(["bash", str(SKILL / path), *args], input=payload,
@@ -218,6 +241,91 @@ sys.exit(int(os.environ.get('FAKE_EXIT', '0')))
                                  env={**self.env, "FAKE_OLD_CLI": "1"})
         self.assertNotEqual(result.returncode, 0)
         self.assertFalse(self.config_path("codex").exists())
+
+    def test_installed_commands_preserve_quoted_paths_and_exact_harness_identity(self):
+        result = self.install("claude-code")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        command = self.read_config("claude-code")["hooks"]["UserPromptSubmit"][0]["hooks"][0]["command"]
+        result = subprocess.run(["bash", "-c", command], input='{"session_id":"exact"}', text=True,
+                                capture_output=True, env=self.env, timeout=3)
+        self.assertEqual((result.returncode, result.stdout, result.stderr), (0, "", ""))
+        self.assertEqual(self.recorded()[-1], {"args": ["capture", "hook", "--agent", "claude-code",
+            "--event", "prompt", "--harness-version", "0.167.0"], "payload": '{"session_id":"exact"}'})
+
+    def test_failed_atomic_config_replacement_restores_previous_payload(self):
+        self.assertEqual(self.install().returncode, 0)
+        config = self.config_path("codex")
+        receipt = self.home / ".codex/skills/keito-time-track/capture-install.json"
+        before = (config.read_bytes(), receipt.read_bytes())
+        spec = importlib.util.spec_from_file_location("keito_installer_under_test", SKILL / "installers/manage-hooks.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        replace = module.os.replace
+        def fail_config(source, destination):
+            if Path(destination) == config:
+                raise OSError("synthetic interrupted replacement")
+            return replace(source, destination)
+        args = SimpleNamespace(confirm_migration=False, harness_version="0.167.1")
+        with mock.patch.dict(os.environ, self.env, clear=True), mock.patch.object(module.os, "replace", side_effect=fail_config):
+            with self.assertRaises(OSError):
+                module.apply("codex", "install", args, str(self.bin))
+        self.assertEqual((config.read_bytes(), receipt.read_bytes()), before)
+        self.assertFalse(list(config.parent.glob(".hooks.json.keito-*")))
+
+    def test_modified_skill_payload_is_not_deleted_on_uninstall(self):
+        self.assertEqual(self.install().returncode, 0)
+        config = self.config_path("codex")
+        extra = self.home / ".codex/skills/keito-time-track/assets/capture-install.json"
+        extra.write_text("preserve local edits")
+        before = config.read_bytes()
+        result = self.uninstall()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(config.read_bytes(), before)
+        self.assertEqual(extra.read_text(), "preserve local edits")
+
+    def test_root_plugin_manifest_has_all_boundaries_and_no_network_or_legacy_handler(self):
+        manifest = SKILL / "hooks/claude-plugin.json"
+        data = json.loads(manifest.read_text())
+        root_manifest = SKILL.parent / "hooks/hooks.json"
+        if root_manifest.exists():
+            self.assertEqual(data, json.loads(root_manifest.read_text()))
+        expected = {"SessionStart": "session-start", "UserPromptSubmit": "prompt", "Stop": "stop",
+                    "StopFailure": "interrupt", "SessionEnd": "session-end"}
+        self.assertEqual(set(data["hooks"]), set(expected))
+        for event, lifecycle in expected.items():
+            hook = data["hooks"][event][0]["hooks"][0]
+            self.assertEqual(hook["timeout"], 1)
+            env = {**self.env, "CLAUDE_PLUGIN_ROOT": str(SKILL.parent)}
+            result = subprocess.run(["bash", "-c", hook["command"]], input="{}", capture_output=True,
+                                    text=True, env=env, timeout=3)
+            self.assertEqual((result.returncode, result.stdout, result.stderr), (0, "", ""))
+            self.assertEqual(self.recorded()[-1]["args"], ["capture", "hook", "--agent", "claude-code",
+                "--event", lifecycle, "--harness-version", "0.167.0"])
+
+    def test_setup_picker_scopes_existing_tasks_and_approves_final_hint_only_after_confirmation(self):
+        subprocess.run(["git", "-c", "init.templateDir=", "init", "--quiet", str(self.root)], check=True, env=self.env)
+        result = self.run_script("scripts/setup-wizard.sh", "--agent", "codex", payload="1\n1\n1\ny\n",
+                                 env={**self.env, "FAKE_PICKER": "1"})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        calls = self.recorded()
+        self.assertIn(["--json", "--workspace", "co_test", "projects", "tasks", "p1"], [c["args"] for c in calls])
+        setup = [c for c in calls if "setup" in c["args"]]
+        self.assertEqual(len(setup), 1)
+        self.assertEqual(setup[0]["args"], ["--workspace", "co_test", "capture", "setup", "--agent", "codex",
+                         "--project", "p1", "--task", "t1", "--confirm"])
+        self.assertEqual(setup[0]["mapping_at_setup"]["agent_tracking"],
+                         {"enabled": True, "source": "agent", "redact_notes": True})
+        self.assertFalse(any("create" in c["args"] for c in calls))
+        self.assertEqual((self.root / ".keito/config.yml").stat().st_mode & 0o777, 0o600)
+
+    def test_setup_cancel_or_missing_targets_cannot_approve_mapping(self):
+        subprocess.run(["git", "-c", "init.templateDir=", "init", "--quiet", str(self.root)], check=True, env=self.env)
+        self.assertNotEqual(self.run_script("scripts/setup-wizard.sh").returncode, 0)
+        result = self.run_script("scripts/setup-wizard.sh", "--agent", "codex", payload="1\n1\n1\nn\n",
+                                 env={**self.env, "FAKE_PICKER": "1"})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse((self.root / ".keito/config.yml").exists())
+        self.assertFalse(any("setup" in c["args"] for c in self.recorded()))
 
     def test_management_scripts_delegate_without_legacy_state(self):
         for path, args, expected in [

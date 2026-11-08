@@ -1,52 +1,24 @@
-# Security Policy
+# Security policy
 
-## Reporting
+Report suspected vulnerabilities privately to Keito maintainers. Share only
+sanitized reproduction details; never include credentials, raw hook events,
+transcripts, customer content or real mapping identifiers.
 
-Please report suspected vulnerabilities privately to the Keito maintainers before
-opening a public issue. Include the affected commit, reproduction steps, and any
-logs that do not contain secrets.
+The CLI bundle is the default distribution. A release must identify exact CLI,
+adapter and harness artifacts and renew host trust when required. Portable
+adapters are not an npm package. Optional open skills installation must use the
+pinned `skills@1.5.6` package; workflow actions use full commit SHAs and read-only
+repository permissions.
 
-## Supported Branch
+These adapters pass raw harness JSON only through transient local stdin into the
+allowlisting CLI. They do not write payloads/logs or read transcript files. The
+CLI owns metadata-only SQLite durability and explicit repository consent.
+Installation must not enable Codex features or grant hook trust automatically.
 
-Security fixes target the active distribution branch for `keito-time-track`.
-The public install path should use:
+Malformed settings, unexpected symlinks and modified payloads require explicit
+local recovery. Installer migrations preserve unrelated settings and retain a
+legacy payload backup. An installer manifest states trust unknown and delivery
+unverified. It never stores API keys or proves billing approval.
 
-```bash
-npx --yes skills@1.5.6 add osodevops/keito-skill -g -a codex -a claude-code -s keito-time-track -y --copy
-claude plugin marketplace add osodevops/keito-skill
-```
-
-## Supply Chain Rules
-
-- The skill is installed from GitHub, not published as an npm package.
-- `npx` is only used to run the exact `skills@1.5.6` installer package.
-- GitHub Actions must be pinned to full commit SHAs.
-- Workflows should run with least-privilege `permissions`.
-- Do not commit `.keito/config.yml`, API keys, or live customer/project IDs.
-- Keep examples in `keito-time-track/assets/` synthetic and non-sensitive.
-- Keep Claude Code plugin metadata under `.claude-plugin/` validated before
-  release.
-
-## Local Checks
-
-Run these before opening or updating a PR:
-
-```bash
-bash -n keito-time-track/hooks/session-start.sh keito-time-track/hooks/session-end.sh \
-  keito-time-track/scripts/setup-wizard.sh keito-time-track/scripts/status.sh \
-  keito-time-track/scripts/disable.sh keito-time-track/scripts/install-cli.sh \
-  keito-time-track/installers/install-codex.sh \
-  keito-time-track/installers/install-claude-code.sh tests/run.sh
-
-npx --yes skills-ref@0.1.5 validate keito-time-track
-npx --yes skills@1.5.6 add . -l
-jq empty .claude-plugin/plugin.json .claude-plugin/marketplace.json hooks/hooks.json
-claude plugin validate .
-claude plugin validate .claude-plugin/plugin.json
-
-shellcheck -P keito-time-track keito-time-track/hooks/session-start.sh \
-  keito-time-track/hooks/session-end.sh keito-time-track/hooks/lib/*.sh \
-  keito-time-track/scripts/*.sh keito-time-track/installers/*.sh tests/run.sh
-
-tests/run.sh
-```
+Run the temp-HOME tests and checks in CONTRIBUTING.md before release. Real
+harness qualification and platform authorization/privacy tests remain required.

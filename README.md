@@ -1,135 +1,139 @@
-# Keito Time Track Skill
+# Keito coding-agent capture adapters
 
-[![CI](https://github.com/osodevops/keito-skill/actions/workflows/ci.yml/badge.svg)](https://github.com/osodevops/keito-skill/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Installer](https://img.shields.io/badge/skills-1.5.6-blue.svg)](https://www.npmjs.com/package/skills/v/1.5.6)
-[![Keito CLI](https://img.shields.io/badge/requires-keito%20CLI-111827.svg)](https://github.com/osodevops/keito-cli)
+These adapters connect selected Claude Code and Codex lifecycle events to the
+Keito CLI's metadata-only capture core. The CLI owns exact interval accounting,
+repository consent, the durable queue and canonical session delivery. Authorized
+review controls whether activity becomes a client charge.
 
-Portable Agent Skill for recording Claude Code and Codex coding sessions as
-Keito time entries. The installable Agent Skill lives in
-[`keito-time-track/`](keito-time-track/), so the skill folder name matches the
-`name` in `SKILL.md`.
+This branch is a capture-contract candidate. Installed files and passing local
+adapter tests do not establish real harness dispatch, trusted hooks, successful
+API delivery or demo readiness. Qualify exact CLI, adapter and harness artifacts
+before use; the implementation does not claim usage capture or actual provider
+costs without separate evidence.
 
-GitHub topics for discovery: `agent-skills`, `claude-code`, `claude-skill`,
-`codex`, `codex-cli`, `skill`, `time-tracking`, `keito`.
+## Install selected adapters
 
-## What It Does
-
-- Installs Codex and Claude Code lifecycle hooks.
-- Runs a repo setup wizard that maps one Git worktree to one Keito company,
-  client, project, and task.
-- Records one Keito `source=agent` time entry when a tracked coding session
-  ends.
-- Keeps credentials in the Keito CLI; this skill stores only repo-local IDs in
-  `.keito/config.yml`.
-
-## Install
+Use a CLI release that exposes `keito capture --help`. CLI installation defaults
+to its bundled skill, so its tested payload and runtime travel together:
 
 ```bash
 brew install osodevops/tap/keito
 keito auth login
-keito skill install
+keito skill install --agent claude-code --agent codex
 ```
 
-The Keito CLI is the runtime engine. `keito skill install` installs this skill
-from the GitHub skill repo, configures Claude Code and Codex hooks, and verifies
-the local CLI/auth environment. The skill itself is not published to npm.
-
-Audit-first install:
+Select only `--agent codex` or `--agent claude-code` for a single harness. The
+portable installer also requires explicit targets:
 
 ```bash
-npx --yes skills@1.5.6 add osodevops/keito-skill -g -a codex -a claude-code -s keito-time-track -y --copy
-keito skill install --skip-skills-add
+keito-time-track/installers/install.sh --agent claude-code --agent codex
 ```
 
-Claude Code plugin install:
+Installers require Bash, Python 3 and a compatible Keito CLI; the optional setup
+picker uses jq. The installer records the selected installed harness version
+when available. `--harness-version` may pin the exact version during a qualified
+rehearsal. A recorded version is provenance, not a compatibility certification.
 
-```text
-/plugin marketplace add osodevops/keito-skill
-/plugin install keito-time-track@keito
-```
+Existing unrelated hooks and plugin settings are preserved. Legacy Keito
+financial hooks or a simultaneous Keito Claude plugin require an explicit
+`--confirm-migration` after review. A legacy payload is retained in a hidden
+backup beside the skill. Do not install both plugin and direct hooks to the same
+harness. The shared core still must deduplicate repeated lifecycle delivery.
 
-CLI equivalent:
+Codex `features.hooks`, managed configuration and hook-trust records are never
+changed by these installers. Review/enable hooks through normal Codex settings
+and trust prompts. Do not bypass trust. Updating executable hooks may require
+renewed review. `capture-install.json` records trust as unknown and delivery as
+unverified until a real qualification establishes them.
+
+## Approve a repository mapping
+
+From the intended repository, select existing records and approve the mapping:
 
 ```bash
-claude plugin marketplace add osodevops/keito-skill
-claude plugin install keito-time-track@keito
+keito-time-track/scripts/setup-wizard.sh --agent claude-code --agent codex
 ```
 
-If the CLI is not installed yet, the skill can guide the user through
-`keito-time-track/scripts/install-cli.sh`, then `keito auth login`, then
-`keito skill install`.
-
-## Set Up A Repo
-
-From a client repository:
+For scripted setup, use the CLI directly with explicit project/task IDs and
+confirmation after inspecting the capture policy:
 
 ```bash
-/track-time-keito
+keito --workspace <workspace-id> capture setup --agent codex \
+  --project <project-id> --task <task-id> --confirm
 ```
 
-The skill runs `keito-time-track/scripts/setup-wizard.sh`, which uses the
-authenticated Keito CLI to pick an existing client, project, and task, then
-asks for confirmation before writing the repo-local `.keito/config.yml`.
+The user-owned consent ledger is outside the repository. Cloning an enabled
+`.keito/config.yml` never approves collection. Changed or inaccessible mappings
+hold uploads rather than choosing another client. Legacy config is a mapping
+hint only; installation does not backfill historical sessions.
 
-Each repository needs its own `.keito/config.yml`. The hooks search upward only
-within the current Git worktree, so one client or project config is not reused
-from a neighbouring repository.
+## Lifecycle and controls
 
-Do not commit `.keito/config.yml`; keep
-[`keito-time-track/assets/config.example.yml`](keito-time-track/assets/config.example.yml)
-as documentation for the expected shape.
+| Harness event | Local capture operation |
+| --- | --- |
+| SessionStart | Preserve/open exact session identity |
+| UserPromptSubmit | Open the observed turn |
+| Stop | Checkpoint the completed turn |
+| Codex Interrupt / Claude StopFailure | Preserve incomplete interval evidence |
+| SessionEnd | Finalize without inventing a missing stop time |
 
-To disable tracking for a repository:
+`hooks/session-end.sh` remains a compatibility alias for **Stop**, because old
+installations registered that filename at turn end. Actual SessionEnd uses
+`session-finalize.sh`. All scripts are thin delegates; none calculates duration,
+searches another session, reads transcripts or submits ordinary time entries.
+A one-second watchdog prevents a stalled CLI from blocking coding. A timeout or
+failure requires inspecting CLI status; silence does not mean delivery passed.
 
 ```bash
-keito-time-track/scripts/disable.sh
+keito capture status --json
+keito capture preview --session <session-id> --json
+keito capture sync
+keito capture pause --repo
+keito capture resume --repo
+keito capture disable --repo
+keito-time-track/installers/uninstall.sh --agent codex
 ```
 
-## Runtime
+Uninstall removes integration-owned registrations and an unmodified installed
+payload. It preserves unrelated hooks even when they share a registration group.
+Modified files, malformed settings, symlinks and concurrent installation fail
+with recovery instructions. Configuration replacement is atomic per file;
+unrelated applications do not participate in the installer's lock, so review a
+reported concurrent-change conflict before retrying. No API keys or raw event
+payloads are stored in the installer manifest.
 
-- `keito-time-track/hooks/session-start.sh` records local state when a tracked repo session
-  starts.
-- `keito-time-track/hooks/session-end.sh` computes wall-clock duration and calls:
+## Claude plugin candidate
+
+The root `hooks/hooks.json` supplies the same five Claude lifecycle boundaries.
+Plugin installation uses Claude's normal marketplace workflow; do not combine
+it with direct installation. Plugin hooks use `KEITO_HARNESS_VERSION` when set,
+otherwise `unknown`; an unknown version cannot satisfy the real-harness release
+gate. Direct installation pins the observed version in its registered command.
+
+## Privacy and financial meaning
+
+Raw hook JSON flows only through transient local stdin to the CLI allowlist.
+These scripts never persist it, read the transcript path or emit CLI output into
+model context. Default outbound evidence excludes prompts, assistant prose,
+code, full paths, branches and secrets. Exact observed duration may include tool
+or approval waits within a turn; it is not human effort or vendor cost.
+
+New capture must remain nonbillable pending server-authorized review. Token
+usage, estimated provider cost, actual expenditure and client charges are
+separate facts. Installing these adapters proves none of those financial facts.
+See the qualified product release and review UI before claiming a working
+end-to-end billing workflow.
+
+## Local verification
 
 ```bash
-keito --json time session-record \
-  --project <project_id> \
-  --task <task_id> \
-  --session-id <session_id> \
-  --duration-seconds <seconds> \
-  --source agent
-```
-
-The hook is best-effort: failures are written to `~/.keito/skill/skill.log` and
-never fail the agent session.
-
-## Security
-
-- API keys stay in the Keito CLI config or environment.
-- `.keito/config.yml` stores company/client/project/task IDs, not credentials.
-- Session notes can be redacted with `agent_tracking.redact_notes: true`.
-- Entries are tagged with `metadata.integration=keito_skill` and `source=agent`.
-- `npx` is only used to run the pinned `skills@1.5.6` installer package.
-- GitHub Actions in this repo are pinned to commit SHAs and run with read-only
-  repository permissions.
-- CI rejects floating `skills` installer references and unpinned GitHub Actions.
-
-See [SECURITY.md](SECURITY.md) for reporting and supply-chain expectations.
-
-## Local Verification
-
-```bash
-npx --yes skills-ref@0.1.5 validate keito-time-track
-npx --yes skills@1.5.6 add . -l
-jq empty .claude-plugin/plugin.json .claude-plugin/marketplace.json hooks/hooks.json
-claude plugin validate .
-claude plugin validate .claude-plugin/plugin.json
 tests/run.sh
+find keito-time-track tests -name '*.sh' -print0 | xargs -0 bash -n
+find keito-time-track tests -name '*.sh' -print0 | xargs -0 shellcheck -P keito-time-track
+npx --yes skills-ref@0.1.5 validate keito-time-track
+jq empty .claude-plugin/plugin.json .claude-plugin/marketplace.json hooks/hooks.json
 ```
 
-The test harness uses a fake `keito` executable and temporary session state, so
-it does not touch real Keito credentials or create real time entries.
-
-For contribution workflow and full local checks, see
-[CONTRIBUTING.md](CONTRIBUTING.md).
+Tests use temporary HOME, synthetic events and a fake CLI. They cover adapter
+boundaries, fail-open behavior, installation preservation and rollback; they do
+not qualify real Claude/Codex, database races, network delivery or invoices.

@@ -3,12 +3,12 @@
   "owner": {
     "name": "OSO"
   },
-  "description": "Keito plugins for AI coding-session time tracking.",
+  "description": "Metadata-only coding-agent capture adapters for Keito.",
   "plugins": [
     {
       "name": "keito-time-track",
       "source": "./",
-      "description": "Track billable AI coding-session time in Keito through the Keito CLI.",
+      "description": "Capture metadata-only activity through the Keito CLI for review before billing.",
       "homepage": "https://keito.ai/docs/integrations/skills",
       "repository": "https://github.com/osodevops/keito-skill",
       "license": "MIT",
