@@ -152,7 +152,12 @@ Each lifecycle handoff first publishes a private, content-free invocation flag
 before starting the CLI. The guard passes stdin through without reading it and
 does no accounting, transcript parsing or network work. Only the CLI's exact
 private durable acknowledgement permits flag removal; process exit alone does
-not. A missing executable, timeout or pre-handler death therefore leaves evidence
+not. Cleanup checks the held marker's exact bytes, size, ownership and inode;
+detected edits remain retained. An unrelated writer can still race the final
+check and unlink, so this is not universal filesystem compare-and-swap. The guard
+starts Python in isolated stdlib-only mode (`-I -S`) to exclude site customization
+and import-path injection before its first instruction. A missing executable,
+timeout or pre-handler death after publication therefore leaves evidence
 for the next core run. Live flags block delivery; abandoned flags require the
 core to hold uncertain evidence for inspection and recovery. Do not manually
 delete these flags to resume collection. Inspect `keito capture status` and use
