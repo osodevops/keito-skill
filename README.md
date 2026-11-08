@@ -32,9 +32,10 @@ keito-time-track/installers/install.sh --agent claude-code --agent codex
 Installers require Bash and a compatible native Keito CLI with its verified matching
 `keito-capture-guard` executable. The optional setup picker uses jq. Production
 capture, installation and mapping publication require no Python runtime. Native
-artifact and real-harness qualification remain pending for this candidate. The installer records the selected installed harness version
-when available. `--harness-version` may pin the exact version during a qualified
-rehearsal. A recorded version is provenance, not a compatibility certification.
+artifact and real-harness qualification remain pending for this candidate. The
+installer records the selected installed harness version when available. Record
+exact versions alongside artifact and lifecycle qualification evidence; version
+metadata alone is not a compatibility certification.
 
 Existing unrelated hooks and plugin settings are preserved. Legacy Keito
 financial hooks or a simultaneous Keito Claude plugin require an explicit

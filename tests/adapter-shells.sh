@@ -82,4 +82,4 @@ done
 [ ! -e "$fixture/setup-called" ]
 if keito_isolated_run "$fixture" bash "$repo/keito-time-track/scripts/setup-wizard.sh" > /dev/null 2>&1; then exit 1; fi
 [ ! -e "$fixture/setup-called" ]
-printf '%s\n' 'Native shell delegation, scoped setup, cancellation and explicit-worker checks passed.' 
+printf '%s\n' 'Native shell delegation, scoped setup, cancellation and explicit-worker checks passed.'
