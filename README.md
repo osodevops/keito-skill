@@ -148,6 +148,27 @@ gate. Direct installation pins the observed version in its registered command.
 
 ## Privacy and financial meaning
 
+Each lifecycle handoff first publishes a private, content-free invocation flag
+before starting the CLI. The guard passes stdin through without reading it and
+does no accounting, transcript parsing or network work. Only the CLI's exact
+private durable acknowledgement permits flag removal; process exit alone does
+not. A missing executable, timeout or pre-handler death therefore leaves evidence
+for the next core run. Live flags block delivery; abandoned flags require the
+core to hold uncertain evidence for inspection and recovery. Do not manually
+delete these flags to resume collection. Inspect `keito capture status` and use
+the documented `keito capture recover --confirm` workflow.
+
+The guard uses the effective OS user's capture directory (or an explicit
+operational `KEITO_CAPTURE_HOME` override), rejects symlinked parents, and retains
+only a random nonce plus fixed classification bytes. Its short publication lock
+protects flag creation and acknowledgement cleanup; no SQLite or network work
+runs under that lock. A killed preparation remains classifiable. The shell's
+650ms TERM / 675ms KILL watchdog remains inside the host's one-second ceiling;
+the guard reserves additional cleanup margin. This cannot certify a boundary
+before the guard executes its first durable filesystem instruction, or when
+storage cannot retain any failure evidence. Such unrecordable startup/storage
+failures remain qualification limits, not successful capture.
+
 Raw hook JSON flows only through transient local stdin to the CLI allowlist.
 These scripts never persist it, read the transcript path or emit CLI output into
 model context. Default outbound evidence excludes prompts, assistant prose,
