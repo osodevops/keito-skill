@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "status": "QUALIFICATION_PENDING",
+  "adapter_contract": 1,
+  "plugin_candidate_version": "0.2.0",
+  "cli_candidate": {
+    "version": "0.2.0",
+    "status": "QUALIFICATION_PENDING"
+  },
+  "harness_candidates": [
+    {
+      "name": "claude-code",
+      "version": "2.1.319",
+      "platform": "macOS arm64",
+      "status": "QUALIFICATION_PENDING"
+    },
+    {
+      "name": "codex",
+      "version": "0.167.0",
+      "platform": "macOS arm64",
+      "status": "QUALIFICATION_PENDING"
+    }
+  ],
+  "required_evidence": [
+    "normal host trust and actual lifecycle dispatch",
+    "exact installed CLI and adapter artifact identities",
+    "local durability and healthy automatic delivery",
+    "canonical API acceptance and review hold",
+    "reviewed unsent invoice draft"
+  ],
+  "usage_capture": "UNQUALIFIED",
+  "published_release": false,
+  "notes": "Candidate identifiers only. This manifest supplies no artifact checksums, compatibility certification, successful live checks, or published release claim."
+}

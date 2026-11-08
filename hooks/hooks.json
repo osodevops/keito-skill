@@ -2,11 +2,22 @@
   "hooks": {
     "SessionStart": [
       {
-        "matcher": "startup|resume",
         "hooks": [
           {
             "type": "command",
-            "command": "KEITO_AGENT_TYPE=claude-code \"${CLAUDE_PLUGIN_ROOT}/keito-time-track/hooks/session-start.sh\""
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/keito-time-track/hooks/dispatch.sh\" --agent claude-code --event session-start",
+            "timeout": 1
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/keito-time-track/hooks/dispatch.sh\" --agent claude-code --event prompt",
+            "timeout": 1
           }
         ]
       }
@@ -16,8 +27,30 @@
         "hooks": [
           {
             "type": "command",
-            "command": "KEITO_AGENT_TYPE=claude-code \"${CLAUDE_PLUGIN_ROOT}/keito-time-track/hooks/session-end.sh\"",
-            "timeout": 30
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/keito-time-track/hooks/dispatch.sh\" --agent claude-code --event stop",
+            "timeout": 1
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/keito-time-track/hooks/dispatch.sh\" --agent claude-code --event interrupt",
+            "timeout": 1
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/keito-time-track/hooks/dispatch.sh\" --agent claude-code --event session-end",
+            "timeout": 1
           }
         ]
       }

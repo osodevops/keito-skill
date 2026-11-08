@@ -1,135 +1,215 @@
-# Keito Time Track Skill
+# Keito coding-agent capture adapters
 
-[![CI](https://github.com/osodevops/keito-skill/actions/workflows/ci.yml/badge.svg)](https://github.com/osodevops/keito-skill/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Installer](https://img.shields.io/badge/skills-1.5.6-blue.svg)](https://www.npmjs.com/package/skills/v/1.5.6)
-[![Keito CLI](https://img.shields.io/badge/requires-keito%20CLI-111827.svg)](https://github.com/osodevops/keito-cli)
+These adapters connect selected Claude Code and Codex lifecycle events to the
+Keito CLI's metadata-only capture core. The CLI owns exact interval accounting,
+repository consent, the durable queue and canonical session delivery. Authorized
+review controls whether activity becomes a client charge.
 
-Portable Agent Skill for recording Claude Code and Codex coding sessions as
-Keito time entries. The installable Agent Skill lives in
-[`keito-time-track/`](keito-time-track/), so the skill folder name matches the
-`name` in `SKILL.md`.
+This branch is a capture-contract candidate. Installed files and passing local
+adapter tests do not establish real harness dispatch, trusted hooks, successful
+API delivery or demo readiness. Qualify exact CLI, adapter and harness artifacts
+before use; the implementation does not claim usage capture or actual provider
+costs without separate evidence.
 
-GitHub topics for discovery: `agent-skills`, `claude-code`, `claude-skill`,
-`codex`, `codex-cli`, `skill`, `time-tracking`, `keito`.
+## Install selected adapters
 
-## What It Does
-
-- Installs Codex and Claude Code lifecycle hooks.
-- Runs a repo setup wizard that maps one Git worktree to one Keito company,
-  client, project, and task.
-- Records one Keito `source=agent` time entry when a tracked coding session
-  ends.
-- Keeps credentials in the Keito CLI; this skill stores only repo-local IDs in
-  `.keito/config.yml`.
-
-## Install
+Use a CLI release that exposes `keito capture --help`. CLI installation defaults
+to its bundled skill, so its tested payload and runtime travel together:
 
 ```bash
 brew install osodevops/tap/keito
 keito auth login
-keito skill install
+keito skill install --agent claude-code --agent codex
 ```
 
-The Keito CLI is the runtime engine. `keito skill install` installs this skill
-from the GitHub skill repo, configures Claude Code and Codex hooks, and verifies
-the local CLI/auth environment. The skill itself is not published to npm.
-
-Audit-first install:
+Select only `--agent codex` or `--agent claude-code` for a single harness. The
+portable installer also requires explicit targets:
 
 ```bash
-npx --yes skills@1.5.6 add osodevops/keito-skill -g -a codex -a claude-code -s keito-time-track -y --copy
-keito skill install --skip-skills-add
+keito-time-track/installers/install.sh --agent claude-code --agent codex
 ```
 
-Claude Code plugin install:
+Installers require Bash and a compatible native Keito CLI with its verified matching
+`keito-capture-guard` executable. The optional setup picker uses jq. Production
+capture, installation and mapping publication require no Python runtime. Native
+artifact and real-harness qualification remain pending for this candidate. The
+installer records the selected installed harness version when available. Record
+exact versions alongside artifact and lifecycle qualification evidence; version
+metadata alone is not a compatibility certification.
 
-```text
-/plugin marketplace add osodevops/keito-skill
-/plugin install keito-time-track@keito
-```
+Existing unrelated hooks and plugin settings are preserved. Legacy Keito
+financial hooks or a simultaneous Keito Claude plugin require an explicit
+`--confirm-migration` after review. A legacy payload is retained in a hidden
+backup beside the skill. Do not install both plugin and direct hooks to the same
+harness. The shared core still must deduplicate repeated lifecycle delivery.
 
-CLI equivalent:
+Codex `features.hooks`, managed configuration and hook-trust records are never
+changed by these installers. Review/enable hooks through normal Codex settings
+and trust prompts. Do not bypass trust. Updating executable hooks may require
+renewed review. `capture-install.json` records trust as unknown and delivery as
+unverified until a real qualification establishes them.
+
+## Approve a repository mapping
+
+From the intended repository, select existing records and approve the mapping:
 
 ```bash
-claude plugin marketplace add osodevops/keito-skill
-claude plugin install keito-time-track@keito
+keito-time-track/scripts/setup-wizard.sh --agent claude-code --agent codex --install-worker
 ```
 
-If the CLI is not installed yet, the skill can guide the user through
-`keito-time-track/scripts/install-cli.sh`, then `keito auth login`, then
-`keito skill install`.
-
-## Set Up A Repo
-
-From a client repository:
+For scripted setup, use the CLI directly with explicit project/task IDs and
+confirmation after inspecting the capture policy:
 
 ```bash
-/track-time-keito
+keito --workspace <workspace-id> capture setup --agent codex \
+  --client <client-id> --project <project-id> --task <task-id> \
+  --write-hint --confirm --install-worker
 ```
 
-The skill runs `keito-time-track/scripts/setup-wizard.sh`, which uses the
-authenticated Keito CLI to pick an existing client, project, and task, then
-asks for confirmation before writing the repo-local `.keito/config.yml`.
+`--install-worker` explicitly requests the local background uploader service on
+macOS. The picker previews that request before confirmation. Omitting it approves
+local queuing only; run the explicit worker setup before claiming automatic
+healthy delivery. The CLI owns service installation and runtime-hash checks.
 
-Each repository needs its own `.keito/config.yml`. The hooks search upward only
-within the current Git worktree, so one client or project config is not reused
-from a neighbouring repository.
+The user-owned consent ledger is outside the repository. Cloning an enabled
+`.keito/config.yml` never approves collection. Changed or inaccessible mappings
+hold uploads rather than choosing another client. Legacy config is a mapping
+hint only; installation does not backfill historical sessions.
 
-Do not commit `.keito/config.yml`; keep
-[`keito-time-track/assets/config.example.yml`](keito-time-track/assets/config.example.yml)
-as documentation for the expected shape.
+## Lifecycle and controls
 
-To disable tracking for a repository:
+| Harness event | Local capture operation |
+| --- | --- |
+| SessionStart | Preserve/open exact session identity |
+| UserPromptSubmit | Open the observed turn |
+| Stop | Checkpoint the completed turn |
+| Codex Interrupt / Claude StopFailure | Preserve incomplete interval evidence |
+| SessionEnd | Finalize without inventing a missing stop time |
+
+`hooks/session-end.sh` remains a compatibility alias for **Stop**, because old
+installations registered that filename at turn end. Actual SessionEnd uses
+`session-finalize.sh`. All scripts are thin delegates; none calculates duration,
+searches another session, reads transcripts or submits ordinary time entries.
+The watchdog budgets TERM at 650 ms and KILL 25 ms later, leaving launch/cleanup margin inside the one-second host deadline. A timeout or
+failure requires inspecting CLI status; silence does not mean delivery passed.
 
 ```bash
-keito-time-track/scripts/disable.sh
+keito capture status --json
+keito capture preview --session <session-id> --json
+keito capture sync
+keito capture pause --repo
+keito capture resume --repo
+keito capture disable --repo
+keito-time-track/installers/uninstall.sh --agent codex
 ```
 
-## Runtime
+Installers first durably publish a checksummed hidden generation under the
+selected harness's `.keito-capture-generations` directory. Registered commands
+point there; a version update never overwrites an executable used by an existing
+registration. The JSON switch precedes replacement of the discoverable skill.
+A private journal restores interrupted skill discovery on the next invocation,
+including after SIGKILL. Normal termination also performs recovery. Immutable
+generations remain available across each publication boundary.
 
-- `keito-time-track/hooks/session-start.sh` records local state when a tracked repo session
-  starts.
-- `keito-time-track/hooks/session-end.sh` computes wall-clock duration and calls:
+Uninstall removes recognized integration-owned registrations and an unmodified
+installed discovery payload. Generations are deliberately retained for recovery
+and rollback; review all remaining configurations before manually removing them.
+Commands that merely mention an adapter path, or combine it with another
+executable, are preserved for review rather than silently deleted. Unrelated hooks
+remain intact even when they share a registration group.
+Modified files, malformed settings, symlinked harness/skills parents or leaves, and concurrent installation fail
+with recovery instructions. Configuration replacement is atomic per file;
+unrelated applications do not participate in the installer's lock. The installer
+checks the original bytes again immediately before publication, after journal
+and temporary-file fsync. Detected changes are preserved and reported. A writer
+can still race between that final comparison and replacement: this is not
+cross-application compare-and-swap. Avoid editing the selected settings during
+installation and review any reported conflict before retrying. No API keys or raw event
+payloads are stored in the installer manifest.
+
+Repository setup holds a separate local lock and records private recovery data
+before publishing its candidate hint. A core refusal restores the exact previous
+hint, including a disabled mapping. SIGTERM restores it; the next setup recovers
+a SIGKILL journal without replaying consent, then stops for status inspection.
+If core consent committed just before failure, the restored hint differs from
+that binding and the CLI holds capture until explicit review/reapproval. A
+detected external mapping edit is preserved and reported with its recovery
+journal retained for inspection. Candidate publication and restoration recheck
+the expected bytes after temporary-file fsync, immediately before replacement;
+as with settings, an unrelated writer can still race that final comparison and
+rename. Avoid editing the mapping during setup. On a detected conflict, preserve
+the hint and journal, inspect `keito capture status`, then explicitly reconcile
+the intended mapping and recovery metadata before reapproving. Never delete the
+journal or retry consent blindly.
+
+## Claude plugin candidate
+
+The root `hooks/hooks.json` supplies the same five Claude lifecycle boundaries.
+Plugin installation uses Claude's normal marketplace workflow; do not combine
+it with direct installation. The native guard/core pair is configured by managed
+direct installation. A plugin-only installation does not establish that pair
+and remains unqualified. Plugin hooks use `KEITO_HARNESS_VERSION` when set,
+otherwise `unknown`; an unknown version cannot satisfy the real-harness release
+gate. Direct installation pins the observed version in its registered command.
+
+## Privacy and financial meaning
+
+Each lifecycle handoff first publishes a private, content-free invocation flag
+before starting the CLI. The guard passes stdin through without reading it and
+does no accounting, transcript parsing or network work. Only the CLI's exact
+private durable acknowledgement permits flag removal; process exit alone does
+not. Cleanup checks the held marker's exact bytes, size, ownership and inode;
+detected edits remain retained. An unrelated writer can still race the final
+check and unlink, so this is not universal filesystem compare-and-swap. The guard
+runs as a small native Rust executable with no network or database runtime.
+Managed installation binds the exact release core/guard paths and SHA-256 hashes
+in its local receipt and immutable hook generation. These local identities are
+operational metadata and are not included in outbound capture evidence. The
+main CLI verifies the release pair; a local manifest alone does not grant trust.
+The dispatcher requires the selected absolute `KEITO_CAPTURE_GUARD_BIN` and
+`KEITO_CLI_BIN` paths and never substitutes an unverified runtime from PATH.
+A missing executable,
+timeout or pre-handler death after publication therefore leaves evidence
+for the next core run. Live flags block delivery; abandoned flags require the
+core to hold uncertain evidence for inspection and recovery. Do not manually
+delete these flags to resume collection. Inspect `keito capture status` and use
+the documented `keito capture recover --confirm` workflow.
+
+The guard uses the effective OS user's capture directory (or an explicit
+operational `KEITO_CAPTURE_HOME` override), rejects symlinked parents, and retains
+only a random nonce plus fixed classification bytes. Its short publication lock
+protects flag creation and acknowledgement cleanup; no SQLite or network work
+runs under that lock. A killed preparation remains classifiable. The shell's
+650ms TERM / 675ms KILL watchdog remains inside the host's one-second ceiling;
+the guard reserves additional cleanup margin. This cannot certify a boundary
+before the guard executes its first durable filesystem instruction, or when
+storage cannot retain any failure evidence. Such unrecordable startup/storage
+failures remain qualification limits, not successful capture.
+
+Raw hook JSON flows only through transient local stdin to the CLI allowlist.
+These scripts never persist it, read the transcript path or emit CLI output into
+model context. Default outbound evidence excludes prompts, assistant prose,
+code, full paths, branches and secrets. Exact observed duration may include tool
+or approval waits within a turn; it is not human effort or vendor cost.
+
+New capture must remain nonbillable pending server-authorized review. Token
+usage, estimated provider cost, actual expenditure and client charges are
+separate facts. Installing these adapters proves none of those financial facts.
+See the qualified product release and review UI before claiming a working
+end-to-end billing workflow.
+
+## Local verification
 
 ```bash
-keito --json time session-record \
-  --project <project_id> \
-  --task <task_id> \
-  --session-id <session_id> \
-  --duration-seconds <seconds> \
-  --source agent
-```
-
-The hook is best-effort: failures are written to `~/.keito/skill/skill.log` and
-never fail the agent session.
-
-## Security
-
-- API keys stay in the Keito CLI config or environment.
-- `.keito/config.yml` stores company/client/project/task IDs, not credentials.
-- Session notes can be redacted with `agent_tracking.redact_notes: true`.
-- Entries are tagged with `metadata.integration=keito_skill` and `source=agent`.
-- `npx` is only used to run the pinned `skills@1.5.6` installer package.
-- GitHub Actions in this repo are pinned to commit SHAs and run with read-only
-  repository permissions.
-- CI rejects floating `skills` installer references and unpinned GitHub Actions.
-
-See [SECURITY.md](SECURITY.md) for reporting and supply-chain expectations.
-
-## Local Verification
-
-```bash
-npx --yes skills-ref@0.1.5 validate keito-time-track
-npx --yes skills@1.5.6 add . -l
-jq empty .claude-plugin/plugin.json .claude-plugin/marketplace.json hooks/hooks.json
-claude plugin validate .
-claude plugin validate .claude-plugin/plugin.json
 tests/run.sh
+find keito-time-track tests -name '*.sh' -print0 | xargs -0 -n1 bash -n
+find keito-time-track tests -name '*.sh' -print0 | xargs -0 shellcheck -P keito-time-track
+npx --yes skills-ref@0.1.5 validate keito-time-track
+jq empty .claude-plugin/plugin.json .claude-plugin/marketplace.json hooks/hooks.json
 ```
 
-The test harness uses a fake `keito` executable and temporary session state, so
-it does not touch real Keito credentials or create real time entries.
-
-For contribution workflow and full local checks, see
-[CONTRIBUTING.md](CONTRIBUTING.md).
+Shell delegation tests use an explicitly isolated temporary HOME/capture root and
+fake native executables. Native filesystem, ownership, recovery and publication
+fault tests live with the Rust CLI. Historical Python tests are retained as
+development-only reference outside the installed skill. No local tests qualify
+real Claude/Codex dispatch, provider usage, network delivery or invoices.
